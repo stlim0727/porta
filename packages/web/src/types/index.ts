@@ -37,7 +37,16 @@ export interface ConversationDetail {
 
 export interface HealthResponse {
   status: string;
-  proxy: { port: number; uptime: number };
+  proxy: {
+    port: number;
+    uptime: number;
+    version?: string;
+    gitCommit?: {
+      sha: string;
+      shortSha: string;
+      url: string;
+    };
+  };
   languageServers: {
     pid: number;
     httpsPort: number;
@@ -289,3 +298,11 @@ export interface ClientSettings {
   /** Enables browser notifications for run completion and approval requests. */
   browserNotificationsEnabled: boolean;
 }
+
+// ── Per-Chat Settings ──
+
+export interface ChatSettings {
+  autoApprovedExecutables: string[];
+  autoApproveAllCommands: boolean;
+}
+
