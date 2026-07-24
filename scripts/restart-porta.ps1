@@ -4,7 +4,9 @@ param(
   [int]$ProxyPort = 3170,
   [switch]$Foreground,
   [switch]$RequireLanguageServer,
-  [switch]$Stable
+  [switch]$Stable,
+  [switch]$Clean,
+  [switch]$Tail
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,13 +19,35 @@ Set-Location -LiteralPath $repoRoot
 $tailscaleIp = Resolve-PortaTailscaleIp -HostAddress $HostAddress
 
 Write-Host "Stopping existing Porta dev processes..."
-$existing = @(Get-PortaDevProcesses -RepoRoot $repoRoot)
+$existing = @(Get-PortaDevProcesses -RepoRoot $repoRoot -Ports @($WebPort, $ProxyPort))
 if ($existing.Count -gt 0) {
   $existing | Select-Object ProcessId, ParentProcessId, CommandLine | Format-Table -AutoSize
   Stop-PortaProcessTree -RootIds @($existing | ForEach-Object { [int]$_.ProcessId })
   Start-Sleep -Seconds 2
 } else {
   Write-Host "No existing Porta dev processes found."
+}
+
+if ($Clean) {
+  Write-Host "Cleaning node_modules and restoring dependencies..."
+  $nmFolders = @(
+    "node_modules",
+    "packages\web\node_modules",
+    "packages\proxy\node_modules"
+  )
+  foreach ($folder in $nmFolders) {
+    $fullPath = Join-Path $repoRoot $folder
+    if (Test-Path $fullPath) {
+      Write-Host "Removing $folder..."
+      try {
+        Remove-Item -Recurse -Force $fullPath -ErrorAction Stop
+      } catch {
+        Write-Warning "Could not remove $folder: $($_.Exception.Message)"
+      }
+    }
+  }
+  Write-Host "Running pnpm install..."
+  pnpm install
 }
 
 if ($Foreground) {
@@ -77,3 +101,14 @@ Write-Host "  Web UI:           $webUrl"
 Write-Host "  Proxy:            http://${tailscaleIp}:${ProxyPort}"
 Write-Host "  Mode:             $modeName"
 Write-Host "  Language servers: $languageServerCount"
+
+if ($Tail) {
+  $logFile = Join-Path $repoRoot "logs\proxy.log"
+  if (Test-Path $logFile) {
+    Write-Host ""
+    Write-Host "Streaming logs/proxy.log... Press Ctrl+C to stop."
+    Get-Content -Path $logFile -Wait -Tail 20
+  } else {
+    Write-Host "Log file $logFile not found to stream."
+  }
+}

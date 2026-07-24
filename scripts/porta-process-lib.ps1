@@ -18,12 +18,56 @@ function Resolve-PortaTailscaleIp {
 
   return $ip
 }
+function Get-PortaPortPids {
+  param(
+    [int[]]$Ports
+  )
+
+  if (-not $Ports -or $Ports.Length -eq 0) {
+    return @()
+  }
+
+  $pids = [System.Collections.Generic.HashSet[int]]::new()
+  $netstatLines = cmd /c "netstat -ano -p tcp" 2>$null
+  foreach ($line in $netstatLines) {
+    if ($line -match "LISTENING") {
+      $parts = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+      if ($parts.Length -ge 5) {
+        $localAddr = $parts[1]
+        $pid = [int]$parts[-1]
+        
+        foreach ($port in $Ports) {
+          if ($localAddr.EndsWith(":$port")) {
+            if ($pid -gt 0 -and $pid -ne $PID) {
+              [void]$pids.Add($pid)
+            }
+          }
+        }
+      }
+    }
+  }
+  return @($pids)
+}
 
 function Get-PortaDevProcesses {
-  param([string]$RepoRoot = (Get-PortaRepoRoot))
+  param(
+    [string]$RepoRoot = (Get-PortaRepoRoot),
+    [int[]]$Ports = @()
+  )
+
+  $portPids = [System.Collections.Generic.HashSet[int]]::new()
+  if ($Ports -and $Ports.Length -gt 0) {
+    foreach ($pid in (Get-PortaPortPids -Ports $Ports)) {
+      [void]$portPids.Add($pid)
+    }
+  }
 
   $repoPattern = [regex]::Escape($RepoRoot)
   Get-CimInstance Win32_Process | Where-Object {
+    if ($portPids.Contains([int]$_.ProcessId)) {
+      return $true
+    }
+
     $cmd = $_.CommandLine
     if (-not $cmd) {
       return $false
