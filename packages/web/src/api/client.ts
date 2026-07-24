@@ -41,6 +41,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   health: () => request<import("../types").HealthResponse>("/api/health"),
+  diagnostics: () => request<Record<string, unknown>>("/api/diagnostics"),
+  restartProxy: () =>
+    request<{ ok: boolean; message: string }>("/api/restart", {
+      method: "POST",
+    }),
 
   conversations: () =>
     request<import("../types").ConversationsResponse>("/api/conversations"),

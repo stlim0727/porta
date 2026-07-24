@@ -9,8 +9,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAdaptorServer } from "@hono/node-server";
 
-import { execSync } from "node:child_process";
-import { discovery } from "./routing.js";
+import { execSync, spawn } from "node:child_process";
+import path from "node:path";
+import { discovery, rpc, conversationAffinity } from "./routing.js";
 import { registerConversationRoutes } from "./routes/conversations.js";
 import { registerModelRoutes } from "./routes/models.js";
 import { registerWorkspaceRoutes } from "./routes/workspaces.js";
@@ -79,25 +80,109 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string } | un
 
 const cachedGitCommit = getGitCommitInfo();
 
-// ── Health ──
+async function probeLanguageServer(instance: import("./routing.js").LSInstance) {
+  const start = Date.now();
+  let reachable = false;
+  let latencyMs = -1;
+  let errMessage = "";
+
+  try {
+    // Primary probe: GetWorkspaceInfos is supported across all Language Server versions
+    await rpc.call("GetWorkspaceInfos", {}, instance, true);
+    reachable = true;
+    latencyMs = Date.now() - start;
+  } catch {
+    try {
+      // Fallback probe: GetProcessInfo
+      await rpc.call("GetProcessInfo", {}, instance, true);
+      reachable = true;
+      latencyMs = Date.now() - start;
+    } catch (err) {
+      errMessage = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return {
+    pid: instance.pid,
+    httpsPort: instance.httpsPort,
+    workspaceId: instance.workspaceId,
+    source: instance.source,
+    reachable,
+    latencyMs,
+    error: errMessage || undefined,
+  };
+}
+
+// ── Health & Diagnostics ──
 
 app.get("/api/health", async (c) => {
   const instances = await discovery.getInstances();
+  const lsDiagnostics = await Promise.all(instances.map((i) => probeLanguageServer(i)));
+  const isOk = lsDiagnostics.length > 0 && lsDiagnostics.some((l) => l.reachable);
+
   return c.json({
-    status: "ok",
+    status: isOk ? "ok" : "degraded",
     proxy: {
       port: PORT,
       uptime: process.uptime(),
       version: PORTA_VERSION,
       gitCommit: cachedGitCommit ?? getGitCommitInfo(),
+      memory: process.memoryUsage(),
     },
-    languageServers: instances.map((i) => ({
-      pid: i.pid,
-      httpsPort: i.httpsPort,
-      workspaceId: i.workspaceId,
-      source: i.source,
-    })),
+    languageServers: lsDiagnostics,
+    affinityEntries: conversationAffinity.size,
+    rpcDiagnostics: rpc.getDiagnostics(),
   });
+});
+
+app.get("/api/diagnostics", async (c) => {
+  const instances = await discovery.getInstances();
+  const lsDiagnostics = await Promise.all(instances.map((i) => probeLanguageServer(i)));
+
+  return c.json({
+    timestamp: new Date().toISOString(),
+    proxy: {
+      port: PORT,
+      host: HOST,
+      uptime: process.uptime(),
+      version: PORTA_VERSION,
+      gitCommit: cachedGitCommit ?? getGitCommitInfo(),
+      memory: process.memoryUsage(),
+    },
+    languageServers: lsDiagnostics,
+    affinityCacheSize: conversationAffinity.size,
+    rpcStats: rpc.getDiagnostics(),
+  });
+});
+
+app.post("/api/restart", (c) => {
+  setTimeout(() => {
+    try {
+      if (process.platform === "win32") {
+        const repoRoot = process.cwd();
+        const psScript = path.join(repoRoot, "scripts", "restart-porta.ps1");
+        const isStable = process.env.PORTA_MODE === "stable";
+        const args = [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          psScript,
+        ];
+        if (isStable) args.push("-Stable");
+        spawn("powershell.exe", args, {
+          detached: true,
+          stdio: "ignore",
+        }).unref();
+      } else {
+        process.exit(0);
+      }
+    } catch {
+      process.exit(0);
+    }
+  }, 500);
+
+  return c.json({ ok: true, message: "Restarting Porta server..." });
 });
 
 // ── Routes ──

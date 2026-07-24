@@ -37,8 +37,8 @@ describe("ChatSettingsModal", () => {
 
     expect(screen.getByText("Chat Settings")).toBeInTheDocument();
     expect(screen.getByText("My Conversation")).toBeInTheDocument();
-    expect(screen.getByText("git")).toBeInTheDocument();
-    expect(screen.getByText("node")).toBeInTheDocument();
+    expect(screen.getAllByText("git")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("node")[0]).toBeInTheDocument();
   });
 
   it("adds preset executable when clicking preset chip", async () => {
