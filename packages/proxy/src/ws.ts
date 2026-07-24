@@ -53,8 +53,8 @@ const SOCKET_KEEPALIVE_INTERVAL = 25_000;
  */
 const ACTIVE_OVERLAP = 20;
 
-/** Consecutive polls with no step-count growth before checking terminal status. */
-const EMPTY_THRESHOLD = 3;
+/** Consecutive polls with no step-count growth or content change before checking terminal status. */
+const EMPTY_THRESHOLD = 10;
 
 /**
  * Minimum time (ms) to stay ACTIVE after an activation signal.
@@ -104,7 +104,7 @@ export function shouldActivateIdlePolling(
 ): boolean {
   return (
     status === "CASCADE_RUN_STATUS_RUNNING" ||
-    (totalStepCount ?? 0) > lastStepCount
+    (totalStepCount ?? 0) !== lastStepCount
   );
 }
 
@@ -205,6 +205,8 @@ export function setupWebSocket(
       let peerAlive = true;
       const autoApprovedSteps = new Set<string>();
 
+      let lastWindowHash = "";
+
       // ── Helpers ──
 
       const cancelTimer = () => {
@@ -250,6 +252,7 @@ export function setupWebSocket(
 
       const enterActive = (guard = true) => {
         if (destroyed) return;
+        lastWindowHash = "";
         // Always extend the guard period, even if already active
         // (e.g. permission approval while the agent is running).
         if (guard) {
@@ -268,6 +271,7 @@ export function setupWebSocket(
 
       const enterIdle = () => {
         if (destroyed) return;
+        lastWindowHash = "";
         const wasActive = pollState === "active";
         pollState = "idle";
         emptyCount = 0;
@@ -289,11 +293,13 @@ export function setupWebSocket(
        *   streaming updates. The LS writes PLANNER_RESPONSE content without
        *   incrementing the step count, so overlap is the only way to see
        *   partial text during generation.
-       * @returns Whether the step COUNT grew (for deactivation logic).
-       *   Overlap-only updates (same count, new text) return false.
+       * @returns Object with step count growth (`grew`) and overall progress
+       *   (including in-place content changes).
        */
-      const fetchAndPush = async (withOverlap = false): Promise<boolean> => {
-        if (destroyed) return false;
+      const fetchAndPush = async (
+        withOverlap = false,
+      ): Promise<{ grew: boolean; hasProgress: boolean }> => {
+        if (destroyed) return { grew: false, hasProgress: false };
         try {
           const fetchOffset = getActivePollFetchOffset(
             lastStepCount,
@@ -310,7 +316,7 @@ export function setupWebSocket(
           )) as { steps?: unknown[] };
 
           const newSteps = data.steps ?? [];
-          if (newSteps.length === 0) return false;
+          if (newSteps.length === 0) return { grew: false, hasProgress: false };
           const annotatedSteps = messageTracker.annotateSteps(
             cascadeId,
             fetchOffset,
@@ -360,6 +366,12 @@ export function setupWebSocket(
           const newEnd = fetchOffset + newSteps.length;
           const stepCountGrew = newEnd > lastStepCount;
 
+          const windowHash = JSON.stringify(annotatedSteps);
+          const contentChanged = windowHash !== lastWindowHash;
+          lastWindowHash = windowHash;
+
+          const hasProgress = stepCountGrew || contentChanged;
+
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
@@ -371,7 +383,7 @@ export function setupWebSocket(
           }
 
           lastStepCount = newEnd;
-          return stepCountGrew;
+          return { grew: stepCountGrew, hasProgress };
         } catch (err) {
           const badOffset = oversizedStepOffset(err);
           if (badOffset >= 0) {
@@ -392,7 +404,7 @@ export function setupWebSocket(
                 }),
               );
             }
-            return delta.grew;
+            return { grew: delta.grew, hasProgress: delta.grew };
           } else if (isRecoverableStepError(err)) {
             try {
               const { count: total } = await getStepCount(cascadeId, undefined, true);
@@ -418,7 +430,7 @@ export function setupWebSocket(
                   }),
                 );
               }
-              return delta.grew;
+              return { grew: delta.grew, hasProgress: delta.grew };
             } catch {
               const delta = buildRecoverableStepDelta(
                 lastStepCount,
@@ -437,10 +449,10 @@ export function setupWebSocket(
                   }),
                 );
               }
-              return delta.grew;
+              return { grew: delta.grew, hasProgress: delta.grew };
             }
           }
-          return false;
+          return { grew: false, hasProgress: false };
         }
       };
 
@@ -468,9 +480,9 @@ export function setupWebSocket(
           pendingTimer = null;
           if (destroyed || pollState !== "active") return;
 
-          const grew = await fetchAndPush(true);
+          const { hasProgress } = await fetchAndPush(true);
 
-          if (grew) {
+          if (hasProgress) {
             emptyCount = 0;
           } else {
             emptyCount++;
@@ -585,10 +597,16 @@ export function setupWebSocket(
           const msg = JSON.parse(raw.toString());
           if (msg.type === "sync" && typeof msg.fromOffset === "number") {
             lastStepCount = msg.fromOffset;
-            fetchAndPush(); // Catch up on missed steps (no overlap, no state change)
+            lastWindowHash = "";
+            void fetchAndPush().then((res) => {
+              if (res.hasProgress) {
+                enterActive(false);
+              }
+            });
           } else if (msg.type === "refresh") {
             lastStepCount = 0;
             minFetchOffset = 0;
+            lastWindowHash = "";
             enterActive();
           }
         } catch {}
