@@ -44,28 +44,32 @@ export function extractExecutable(commandLine: string): string {
     trimmed = trimmed.replace(/^[A-Za-z_][A-Za-z0-9_]*=[^\s]+\s+/, "");
   }
 
-  // Split into tokens
-  const tokens = trimmed.split(/\s+/);
-  if (tokens.length === 0 || !tokens[0]) return "";
+  // Match executable target (quoted, unquoted Windows path with extension, or first token)
+  const match = trimmed.match(/^(?:"([^"]+)"|'([^']+)'|([A-Za-z]:\\[^]*?\.(?:exe|cmd|bat|ps1|sh)\b)|([^\s]+))/i);
+  if (!match) return "";
 
-  let rawExe = tokens[0];
+  let rawExe = match[1] || match[2] || match[3] || match[4] || "";
+  if (!rawExe) return "";
 
   // If token is a wrapper like "cmd", "cmd.exe", "powershell", "powershell.exe", "npx", check next token
   const lowerRaw = rawExe.toLowerCase().replace(/\\/g, "/");
   const baseRaw = basename(lowerRaw).replace(/\.(exe|cmd|bat|ps1|sh)$/i, "");
 
-  if (["cmd", "powershell", "pwsh", "npx", "exec", "sudo", "env"].includes(baseRaw) && tokens.length > 1) {
-    // Look for the next non-flag token
-    let idx = 1;
-    while (idx < tokens.length && (tokens[idx].startsWith("-") || tokens[idx].startsWith("/"))) {
-      idx++;
-    }
-    if (idx < tokens.length && tokens[idx]) {
-      rawExe = tokens[idx];
+  if (["cmd", "powershell", "pwsh", "npx", "exec", "sudo", "env"].includes(baseRaw)) {
+    const remainder = trimmed.slice(match[0].length).trim();
+    if (remainder) {
+      const tokens = remainder.split(/\s+/);
+      let idx = 0;
+      while (idx < tokens.length && (tokens[idx].startsWith("-") || tokens[idx].startsWith("/"))) {
+        idx++;
+      }
+      if (idx < tokens.length && tokens[idx]) {
+        rawExe = tokens[idx];
+      }
     }
   }
 
-  // Remove leading/trailing quotes
+  // Remove leading/trailing quotes if any remain
   rawExe = rawExe.replace(/^["']|["']$/g, "");
 
   // Take basename (handles Unix / Windows paths)

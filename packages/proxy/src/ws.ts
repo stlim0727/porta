@@ -104,7 +104,7 @@ export function shouldActivateIdlePolling(
 ): boolean {
   return (
     status === "CASCADE_RUN_STATUS_RUNNING" ||
-    (totalStepCount ?? 0) !== lastStepCount
+    (totalStepCount ?? 0) > lastStepCount
   );
 }
 
@@ -523,11 +523,17 @@ export function setupWebSocket(
               true,
             )) as { status?: string; numTotalSteps?: number };
 
+            const total = data.numTotalSteps ?? 0;
+            if (total < lastStepCount) {
+              // Reset socket cursor if conversation was reverted or truncated
+              lastStepCount = total;
+            }
+
             if (
               shouldActivateIdlePolling(
                 lastStepCount,
                 data.status,
-                data.numTotalSteps,
+                total,
               )
             ) {
               // Heartbeat only observes already-visible server state, so it

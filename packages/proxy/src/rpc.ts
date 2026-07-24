@@ -92,12 +92,13 @@ export class RPCClient {
     method: string,
     body: Record<string, unknown> = {},
     instance?: LSInstance,
+    silent = false,
   ): Promise<T> {
-    this.totalRequests++;
+    if (!silent) this.totalRequests++;
     const ls = instance ?? (await this.discovery.getInstance());
     if (!ls) {
       const err = new RPCError("No Language Server instance found", "unavailable");
-      this.recordError(method, err);
+      if (!silent) this.recordError(method, err);
       throw err;
     }
 
@@ -138,8 +139,10 @@ export class RPCClient {
 
       return JSON.parse(value.body) as T;
     } catch (err) {
-      this.totalFailures++;
-      this.recordError(method, err);
+      if (!silent) {
+        this.totalFailures++;
+        this.recordError(method, err);
+      }
       if (err instanceof RPCError) {
         throw err;
       }

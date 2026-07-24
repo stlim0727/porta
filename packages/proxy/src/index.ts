@@ -9,7 +9,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAdaptorServer } from "@hono/node-server";
 
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
+import path from "node:path";
 import { discovery, rpc, conversationAffinity } from "./routing.js";
 import { registerConversationRoutes } from "./routes/conversations.js";
 import { registerModelRoutes } from "./routes/models.js";
@@ -79,34 +80,46 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string } | un
 
 const cachedGitCommit = getGitCommitInfo();
 
+async function probeLanguageServer(instance: import("./routing.js").LSInstance) {
+  const start = Date.now();
+  let reachable = false;
+  let latencyMs = -1;
+  let errMessage = "";
+
+  try {
+    // Primary probe: GetWorkspaceInfos is supported across all Language Server versions
+    await rpc.call("GetWorkspaceInfos", {}, instance, true);
+    reachable = true;
+    latencyMs = Date.now() - start;
+  } catch {
+    try {
+      // Fallback probe: GetProcessInfo
+      await rpc.call("GetProcessInfo", {}, instance, true);
+      reachable = true;
+      latencyMs = Date.now() - start;
+    } catch (err) {
+      errMessage = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return {
+    pid: instance.pid,
+    httpsPort: instance.httpsPort,
+    workspaceId: instance.workspaceId,
+    source: instance.source,
+    reachable,
+    latencyMs,
+    error: errMessage || undefined,
+  };
+}
+
 // ── Health & Diagnostics ──
 
 app.get("/api/health", async (c) => {
   const instances = await discovery.getInstances();
-  const lsDiagnostics = await Promise.all(
-    instances.map(async (i) => {
-      const start = Date.now();
-      let reachable = false;
-      let latencyMs = -1;
-      try {
-        await rpc.call("GetProcessInfo", {}, i);
-        reachable = true;
-        latencyMs = Date.now() - start;
-      } catch {
-        // Ping failed or timed out
-      }
-      return {
-        pid: i.pid,
-        httpsPort: i.httpsPort,
-        workspaceId: i.workspaceId,
-        source: i.source,
-        reachable,
-        latencyMs,
-      };
-    }),
-  );
-
+  const lsDiagnostics = await Promise.all(instances.map((i) => probeLanguageServer(i)));
   const isOk = lsDiagnostics.length > 0 && lsDiagnostics.some((l) => l.reachable);
+
   return c.json({
     status: isOk ? "ok" : "degraded",
     proxy: {
@@ -124,30 +137,7 @@ app.get("/api/health", async (c) => {
 
 app.get("/api/diagnostics", async (c) => {
   const instances = await discovery.getInstances();
-  const lsDiagnostics = await Promise.all(
-    instances.map(async (i) => {
-      const start = Date.now();
-      let reachable = false;
-      let latencyMs = -1;
-      let errMessage = "";
-      try {
-        await rpc.call("GetProcessInfo", {}, i);
-        reachable = true;
-        latencyMs = Date.now() - start;
-      } catch (err) {
-        errMessage = err instanceof Error ? err.message : String(err);
-      }
-      return {
-        pid: i.pid,
-        httpsPort: i.httpsPort,
-        workspaceId: i.workspaceId,
-        source: i.source,
-        reachable,
-        latencyMs,
-        error: errMessage || undefined,
-      };
-    }),
-  );
+  const lsDiagnostics = await Promise.all(instances.map((i) => probeLanguageServer(i)));
 
   return c.json({
     timestamp: new Date().toISOString(),
@@ -163,6 +153,36 @@ app.get("/api/diagnostics", async (c) => {
     affinityCacheSize: conversationAffinity.size,
     rpcStats: rpc.getDiagnostics(),
   });
+});
+
+app.post("/api/restart", (c) => {
+  setTimeout(() => {
+    try {
+      if (process.platform === "win32") {
+        const repoRoot = process.cwd();
+        const psScript = path.join(repoRoot, "scripts", "restart-porta.ps1");
+        const isStable = process.env.PORTA_MODE === "stable";
+        const args = [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          psScript,
+        ];
+        if (isStable) args.push("-Stable");
+        spawn("powershell.exe", args, {
+          detached: true,
+          stdio: "ignore",
+        }).unref();
+      } else {
+        process.exit(0);
+      }
+    } catch {
+      process.exit(0);
+    }
+  }, 500);
+
+  return c.json({ ok: true, message: "Restarting Porta server..." });
 });
 
 // ── Routes ──
