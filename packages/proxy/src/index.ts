@@ -80,7 +80,7 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string } | un
 
 const cachedGitCommit = getGitCommitInfo();
 
-async function probeLanguageServer(instance: import("./routing.js").LSInstance) {
+async function probeLanguageServer(instance: import("./discovery.js").LSInstance) {
   const start = Date.now();
   let reachable = false;
   let latencyMs = -1;
