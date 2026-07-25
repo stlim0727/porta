@@ -5,6 +5,7 @@ import type { ChatSettings } from "../types";
 interface Props {
   title: string;
   projectName?: string;
+  workspaceUri?: string;
   cascadeId?: string;
   onMenuToggle?: () => void;
   chatSettings?: ChatSettings;
@@ -14,6 +15,7 @@ interface Props {
 export function ChatHeader({
   title,
   projectName,
+  workspaceUri,
   cascadeId,
   onMenuToggle,
   chatSettings,
@@ -55,6 +57,7 @@ export function ChatHeader({
           <WorkspaceStatusBar
             cascadeId={cascadeId}
             projectName={projectName}
+            workspaceUri={workspaceUri}
             chatSettings={chatSettings}
             onOpenChatSettings={onOpenChatSettings}
           />
