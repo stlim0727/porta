@@ -53,6 +53,15 @@ export default defineConfig(({ mode }) => {
       host: env.PORTA_HOST || process.env.PORTA_HOST || "127.0.0.1",
       port: Number(env.PORTA_WEB_PORT || process.env.PORTA_WEB_PORT || 3070),
       ...(allowedHosts !== undefined ? { allowedHosts } : {}),
+      watch: {
+        ignored: [
+          "**/.git/**",
+          "**/.gemini/**",
+          "**/logs/**",
+          "**/*.log",
+          "**/dist/**",
+        ],
+      },
       proxy: {
         "/api": {
           target: toHttpOrigin(proxyHost, proxyPort),
