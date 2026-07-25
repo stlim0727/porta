@@ -228,4 +228,9 @@ export const api = {
       `/api/conversations/${cascadeId}/github/prs/${owner}/${repo}/${pullNumber}`,
       { method: "DELETE" },
     ),
+
+  getWorkspaceStatus: (cascadeId: string) =>
+    request<import("../types").WorkspaceStatus>(
+      `/api/conversations/${cascadeId}/workspace-status`,
+    ),
 };

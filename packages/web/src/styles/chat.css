@@ -32,8 +32,47 @@
 .main-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 65%;
+}
+
+.workspace-status-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--text-secondary, #cbd5e1);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 1;
+}
+
+.workspace-status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-status-text {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-status-branch {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-header-project {

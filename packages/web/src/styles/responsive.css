@@ -72,6 +72,18 @@
     font-size: 13px;
   }
 
+  .main-header-actions {
+    max-width: 55%;
+  }
+
+  .workspace-status-text {
+    max-width: 80px;
+  }
+
+  .workspace-status-branch {
+    max-width: 70px;
+  }
+
   /* ── Chat area: reduced padding ── */
 
   .chat-area {

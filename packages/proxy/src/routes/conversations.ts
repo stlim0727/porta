@@ -36,6 +36,7 @@ import { messageTracker } from "../message-tracker.js";
 import { conversationSignals } from "../signals.js";
 import { githubMonitor, parseGitHubPRUrls } from "../github-monitor.js";
 import { getChatSettings, updateChatSettings } from "../chat-settings.js";
+import { getWorkspaceStatus } from "../workspace-status.js";
 
 const MAX_STEPS_LIMIT = 500;
 const MAX_TOTAL_CONVERSATIONS = 100;
@@ -356,6 +357,41 @@ export function registerConversationRoutes(app: Hono): void {
         cascadeId: id,
       }, undefined, true);
       return c.json(data);
+    } catch (err) {
+      return handleRPCError(c, err);
+    }
+  });
+
+  app.get("/api/conversations/:id/workspace-status", async (c) => {
+    const id = c.req.param("id");
+    try {
+      let workspaceUri: string | undefined;
+      try {
+        const data = await rpcForConversation<{ trajectory?: { workspaces?: { workspaceFolderAbsoluteUri?: string }[] } }>(
+          "GetCascadeTrajectory",
+          id,
+          { cascadeId: id },
+          undefined,
+          true,
+        );
+        workspaceUri = data?.trajectory ? getPrimaryWorkspaceUri(data.trajectory) : undefined;
+      } catch {
+        // ignore
+      }
+
+      if (!workspaceUri) {
+        const wsId = conversationAffinity.get(id);
+        if (wsId && wsId.startsWith("file_")) {
+          workspaceUri = wsId.replace(/^file_/, "file:///").replace(/_/g, "/");
+        }
+      }
+
+      if (!workspaceUri) {
+        workspaceUri = process.cwd();
+      }
+
+      const status = getWorkspaceStatus(workspaceUri, id);
+      return c.json(status);
     } catch (err) {
       return handleRPCError(c, err);
     }
