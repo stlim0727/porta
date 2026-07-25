@@ -29,9 +29,6 @@ export function WorkspaceStatusBar({
     try {
       const data = await api.getWorkspaceStatus(cascadeId, workspaceUri);
       setStatus(data);
-      if (data.trackedPr) {
-        setTrackedPrs((prev) => (prev.length === 0 ? [data.trackedPr] : prev));
-      }
     } catch {
       // ignore
     }
@@ -87,6 +84,7 @@ export function WorkspaceStatusBar({
       await api.trackPR(cascadeId, newUrl.trim());
       setNewUrl("");
       await fetchTrackedPrs();
+      await fetchStatus();
     } catch (err) {
       alert((err as Error).message);
     } finally {
@@ -97,8 +95,13 @@ export function WorkspaceStatusBar({
   const handleRemovePR = async (owner: string, repo: string, pullNumber: number) => {
     if (!cascadeId) return;
     try {
+      const num = Number(pullNumber);
+      setTrackedPrs((prev) => prev.filter((p) => Number(p.pullNumber) !== num));
+      setStatus((prev) => (prev ? { ...prev, trackedPr: undefined } : null));
+
       await api.untrackPR(cascadeId, owner, repo, pullNumber);
       await fetchTrackedPrs();
+      await fetchStatus();
     } catch (err) {
       console.error("Failed to untrack PR", err);
     }

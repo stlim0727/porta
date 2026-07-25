@@ -172,11 +172,26 @@ export class GitHubMonitor {
   }
 
   public untrackPR(conversationId: string, owner: string, repo: string, pullNumber: number): boolean {
-    const key = `${conversationId}:${owner}/${repo}#${pullNumber}`;
-    const deleted = this.trackedPRs.delete(key);
+    let deleted = false;
+    const num = Number(pullNumber);
+    const targetOwner = (owner || "").toLowerCase();
+    const targetRepo = (repo || "").toLowerCase();
+
+    for (const [key, pr] of Array.from(this.trackedPRs.entries())) {
+      const isConvMatch = pr.conversationId === conversationId || key.startsWith(`${conversationId}:`);
+      const isNumMatch = pr.pullNumber === num;
+      const isOwnerMatch = !targetOwner || pr.owner.toLowerCase() === targetOwner;
+      const isRepoMatch = !targetRepo || pr.repo.toLowerCase() === targetRepo;
+
+      if (isConvMatch && isNumMatch && isOwnerMatch && isRepoMatch) {
+        this.trackedPRs.delete(key);
+        deleted = true;
+      }
+    }
+
     if (deleted) {
       this.persist();
-      console.log(`[github-monitor] Untracked PR ${owner}/${repo}#${pullNumber} for conversation ${conversationId}`);
+      console.log(`[github-monitor] Untracked PR #${pullNumber} for conversation ${conversationId}`);
     }
     return deleted;
   }
