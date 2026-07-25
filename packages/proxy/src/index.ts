@@ -91,10 +91,14 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPus
       // ignore
     }
 
+    const encodedBranch = branchName
+      ? branchName.split("/").map((seg) => encodeURIComponent(seg)).join("/")
+      : "";
+
     const url = isPushed
       ? `${repoUrl}/commit/${sha}`
       : branchName
-        ? `${repoUrl}/tree/${branchName}`
+        ? `${repoUrl}/tree/${encodedBranch}`
         : repoUrl;
 
     return { sha, shortSha, url, isPushed };

@@ -166,7 +166,17 @@ export function WorkspaceStatusBar({
         ) : (
           <IconSliders size={14} />
         )}
-        <span className="workspace-info-btn-text" style={{ fontSize: "12px", color: "#cbd5e1" }}>
+        <span
+          className="workspace-info-btn-text"
+          style={{
+            fontSize: "12px",
+            color: "#cbd5e1",
+            maxWidth: "120px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {folderName}
         </span>
         {dotColor && (
