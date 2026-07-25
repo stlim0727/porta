@@ -33,17 +33,14 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: "autoUpdate",
+        registerType: "prompt",
         workbox: {
-          // Only precache hashed static assets — NOT index.html.
+          // Precache hashed static assets — NOT index.html.
           // index.html must always come from the network so deploys
-          // take effect immediately. Hashed filenames (e.g. index-Ab12Cd.js)
-          // guarantee the SW cache entry matches the code version.
+          // take effect on manual reload without forcing unexpected page refreshes.
           globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
-          skipWaiting: true,
-          clientsClaim: true,
           // Don't create a NavigationRoute — let navigation requests
-          // hit the network (Cloudflare CDN) for a fresh index.html.
+          // hit the network for a fresh index.html.
           navigateFallback: null,
         },
         manifest: false, // Use our existing public/manifest.json
