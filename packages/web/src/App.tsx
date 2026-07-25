@@ -491,6 +491,7 @@ function ChatView() {
           settings={chatSettings}
           onUpdateSettings={handleUpdateChatSettings}
           onDeleteChat={() => handleDelete(activeId)}
+          workspaceUri={activeConv?.summary.workspaces?.[0]?.workspaceFolderAbsoluteUri || currentWorkspaceUri}
         />
       )}
     </div>

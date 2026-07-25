@@ -23,7 +23,7 @@ describe("ChatSettingsModal", () => {
     expect(screen.queryByText("Chat Settings")).not.toBeInTheDocument();
   });
 
-  it("renders configured executables and presets when isOpen is true", () => {
+  it("renders workspace & git info, auto approval, and danger zone sections when isOpen is true", () => {
     render(
       <ChatSettingsModal
         isOpen={true}
@@ -37,6 +37,9 @@ describe("ChatSettingsModal", () => {
 
     expect(screen.getByText("Chat Settings")).toBeInTheDocument();
     expect(screen.getByText("My Conversation")).toBeInTheDocument();
+    expect(screen.getByText("Workspace & Git Info")).toBeInTheDocument();
+    expect(screen.getByText("Terminal Command Auto-Approval")).toBeInTheDocument();
+    expect(screen.getByText("Danger Zone")).toBeInTheDocument();
     expect(screen.getAllByText("git")[0]).toBeInTheDocument();
     expect(screen.getAllByText("node")[0]).toBeInTheDocument();
   });
