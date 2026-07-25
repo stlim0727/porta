@@ -157,7 +157,7 @@ export function WorkspaceStatusBar({
     <div style={{ position: "relative", display: "inline-block" }}>
       {/* Sleek Control Icon Trigger Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onOpenChatSettings ? onOpenChatSettings : () => setIsOpen(!isOpen)}
         className="workspace-info-trigger-btn"
         style={{
           background: isOpen ? "rgba(30, 41, 59, 0.95)" : "rgba(30, 41, 59, 0.6)",
@@ -568,7 +568,7 @@ export function WorkspaceStatusBar({
                       fontWeight: 500,
                     }}
                   >
-                    ⚙️ Configure
+                    ⚙️ Chat Settings
                   </button>
                 )}
               </div>

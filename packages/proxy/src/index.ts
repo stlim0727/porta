@@ -49,7 +49,7 @@ app.use(
 
 const PORTA_VERSION = "0.13.0";
 
-function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean } | undefined {
+function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean; isDirty: boolean } | undefined {
   try {
     const sha = execSync("git rev-parse HEAD", {
       encoding: "utf8",
@@ -91,6 +91,19 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPus
       // ignore
     }
 
+    let isDirty = false;
+    try {
+      const statusOutput = execSync("git status --porcelain", {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      if (statusOutput) {
+        isDirty = true;
+      }
+    } catch {
+      // ignore
+    }
+
     const encodedBranch = branchName
       ? branchName.split("/").map((seg) => encodeURIComponent(seg)).join("/")
       : "";
@@ -101,7 +114,7 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPus
         ? `${repoUrl}/tree/${encodedBranch}`
         : repoUrl;
 
-    return { sha, shortSha, url, isPushed };
+    return { sha, shortSha, url, isPushed, isDirty };
   } catch {
     return undefined;
   }
