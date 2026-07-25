@@ -45,6 +45,7 @@ export interface HealthResponse {
       sha: string;
       shortSha: string;
       url: string;
+      isPushed?: boolean;
     };
   };
   languageServers: {

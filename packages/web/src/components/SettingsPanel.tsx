@@ -263,14 +263,18 @@ export function SettingsPanel({ settings, health, onUpdate, onBack }: Props) {
                   rel="noreferrer"
                   className="settings-version-badge"
                   style={{
-                    color: "#38bdf8",
-                    borderColor: "rgba(56, 189, 248, 0.3)",
-                    background: "rgba(56, 189, 248, 0.1)",
+                    color: health.proxy.gitCommit.isPushed === false ? "#fbbf24" : "#38bdf8",
+                    borderColor: health.proxy.gitCommit.isPushed === false ? "rgba(251, 191, 36, 0.3)" : "rgba(56, 189, 248, 0.3)",
+                    background: health.proxy.gitCommit.isPushed === false ? "rgba(251, 191, 36, 0.1)" : "rgba(56, 189, 248, 0.1)",
                     textDecoration: "none",
                   }}
-                  title={`View commit ${health.proxy.gitCommit.sha} on GitHub`}
+                  title={
+                    health.proxy.gitCommit.isPushed === false
+                      ? `Local commit ${health.proxy.gitCommit.sha} (unpushed to remote)`
+                      : `View commit ${health.proxy.gitCommit.sha} on GitHub`
+                  }
                 >
-                  {health.proxy.gitCommit.shortSha} ↗
+                  {health.proxy.gitCommit.shortSha} {health.proxy.gitCommit.isPushed === false ? "(local)" : "↗"}
                 </a>
               )}
             </div>
