@@ -14,12 +14,12 @@ import { rpcForConversation } from "./routing.js";
 import { getMetadata } from "./metadata.js";
 import { conversationSignals } from "./signals.js";
 
-const TRACKED_PRS_FILE = join(
-  homedir(),
-  ".gemini",
-  "antigravity",
-  "porta_tracked_prs.json",
-);
+function getTrackedPrsFile(): string {
+  return (
+    process.env.PORTA_TRACKED_PRS_FILE ||
+    join(homedir(), ".gemini", "antigravity", "porta_tracked_prs.json")
+  );
+}
 
 export interface CICheck {
   name: string;
@@ -82,20 +82,26 @@ function getGitHubToken(): string | undefined {
 }
 
 export class GitHubMonitor {
-  private trackedPRs = new Map<string, TrackedPR>(); // key: `${conversationId}:${owner}/${repo}#${pullNumber}`
-  private pollInterval?: ReturnType<typeof setInterval>;
-  private token?: string;
+  private trackedPRs = new Map<string, TrackedPR>();
   private listeners: ((event: { type: string; pr: TrackedPR }) => void)[] = [];
+  private pollTimer: NodeJS.Timeout | null = null;
+  private token: string | undefined;
 
   constructor() {
     this.token = getGitHubToken();
     this.load();
   }
 
+  public clear() {
+    this.trackedPRs.clear();
+    this.persist();
+  }
+
   private load() {
     try {
-      if (existsSync(TRACKED_PRS_FILE)) {
-        const raw = readFileSync(TRACKED_PRS_FILE, "utf8");
+      const filePath = getTrackedPrsFile();
+      if (existsSync(filePath)) {
+        const raw = readFileSync(filePath, "utf8");
         const parsed = JSON.parse(raw) as Record<string, TrackedPR>;
         for (const [key, pr] of Object.entries(parsed)) {
           if (pr && pr.conversationId) {
@@ -110,12 +116,13 @@ export class GitHubMonitor {
 
   private persist() {
     try {
-      mkdirSync(dirname(TRACKED_PRS_FILE), { recursive: true });
+      const filePath = getTrackedPrsFile();
+      mkdirSync(dirname(filePath), { recursive: true });
       const obj: Record<string, TrackedPR> = {};
       for (const [key, pr] of this.trackedPRs.entries()) {
         obj[key] = pr;
       }
-      writeFileSync(TRACKED_PRS_FILE, JSON.stringify(obj, null, 2), "utf8");
+      writeFileSync(filePath, JSON.stringify(obj, null, 2), "utf8");
     } catch (err) {
       console.error("[github-monitor] Failed to persist tracked PRs:", err);
     }

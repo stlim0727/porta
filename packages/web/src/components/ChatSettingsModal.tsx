@@ -12,6 +12,7 @@ interface Props {
   onUpdateSettings: (patch: Partial<ChatSettings>) => Promise<void>;
   onDeleteChat?: () => void;
   workspaceUri?: string;
+  branchName?: string;
 }
 
 const COMMON_PRESETS = ["git", "node", "pnpm", "npm", "bun", "python", "cargo", "docker", "deno"];
@@ -25,6 +26,7 @@ export function ChatSettingsModal({
   onUpdateSettings,
   onDeleteChat,
   workspaceUri,
+  branchName,
 }: Props) {
   const [customExe, setCustomExe] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,7 +45,9 @@ export function ChatSettingsModal({
     const loadInfo = async () => {
       try {
         const [wsData, prsData] = await Promise.all([
-          api.getWorkspaceStatus(cascadeId, workspaceUri).catch(() => null),
+          api
+            .getWorkspaceStatus(cascadeId, workspaceUri, branchName)
+            .catch(() => null),
           api.getTrackedPRs(cascadeId).catch(() => ({ prs: [] })),
         ]);
         if (mounted) {
@@ -59,7 +63,7 @@ export function ChatSettingsModal({
     return () => {
       mounted = false;
     };
-  }, [isOpen, cascadeId, workspaceUri]);
+  }, [isOpen, cascadeId, workspaceUri, branchName]);
 
   if (!isOpen) return null;
 
@@ -191,7 +195,7 @@ export function ChatSettingsModal({
                 <IconGitBranch size={13} /> Branch (br)
               </label>
               <div className="info-value-box" style={{ background: "var(--bg-tertiary, #18181c)", padding: "8px 12px", borderRadius: "6px", fontSize: "12px", color: "#38bdf8", fontFamily: "monospace", fontWeight: 500 }}>
-                {status?.gitBranch || "develop"}
+                {status?.branch || "No active branch"}
               </div>
             </div>
 

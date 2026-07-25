@@ -308,6 +308,17 @@ export interface ChatSettings {
   autoApproveAllCommands: boolean;
 }
 
+export interface TrackedPR {
+  id: string;
+  owner: string;
+  repo: string;
+  pullNumber: number;
+  url: string;
+  title?: string;
+  lastCiStatus?: "pending" | "success" | "failure" | "unknown";
+  lastReviewState?: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "NONE";
+}
+
 export interface WorkspaceStatus {
   absolutePath: string;
   ideWorkspacePath?: string;
@@ -316,15 +327,6 @@ export interface WorkspaceStatus {
   worktreePath?: string;
   branch?: string;
   gitOrigin?: string;
-  trackedPr?: {
-    id: string;
-    owner: string;
-    repo: string;
-    pullNumber: number;
-    url: string;
-    title?: string;
-    lastCiStatus?: "pending" | "success" | "failure" | "unknown";
-    lastReviewState?: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "NONE";
-  };
+  trackedPr?: TrackedPR;
 }
 

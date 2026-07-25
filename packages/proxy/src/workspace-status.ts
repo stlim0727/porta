@@ -87,6 +87,7 @@ function parseOriginRepo(remoteUrl: string): string | undefined {
 export function getWorkspaceStatus(
   workspaceUri: string,
   conversationId?: string,
+  preferredBranch?: string,
 ): WorkspaceStatus {
   const localPath = uriToLocalPath(workspaceUri);
   const status: WorkspaceStatus = {
@@ -123,7 +124,7 @@ export function getWorkspaceStatus(
     }
   }
 
-  // 1. Get branch name
+  // 1. Get branch name — always from disk HEAD
   try {
     const headPath = join(gitDir, "HEAD");
     if (existsSync(headPath)) {
@@ -155,13 +156,20 @@ export function getWorkspaceStatus(
   }
 
   // 2. Check git worktrees for this repository
+  //    Use preferredBranch (from conversation metadata) to find the correct
+  //    worktree when the workspace has multiple worktrees and the conversation
+  //    was started on a specific branch/worktree.
   const worktrees = parseGitWorktrees(localPath);
   if (worktrees.length > 0) {
     const currentNorm = localPath.toLowerCase();
     const mainWorktree = worktrees[0];
-    const branchWorktree = status.branch
+
+    // If the conversation has a recorded branch that maps to a specific
+    // worktree different from the cwd, use that worktree.
+    const lookupBranch = preferredBranch?.trim() || status.branch;
+    const branchWorktree = lookupBranch
       ? worktrees.find(
-          (w) => w.branch && w.branch.toLowerCase() === status.branch?.toLowerCase(),
+          (w) => w.branch && w.branch.toLowerCase() === lookupBranch.toLowerCase(),
         )
       : undefined;
 
@@ -179,6 +187,10 @@ export function getWorkspaceStatus(
 
       if (isDiffPath) {
         status.absolutePath = activeWorktree.path;
+        // When resolving to a different worktree, use that worktree's branch
+        if (activeWorktree.branch) {
+          status.branch = activeWorktree.branch;
+        }
       }
     }
   }
