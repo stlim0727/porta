@@ -42,7 +42,7 @@ if ($Clean) {
       try {
         Remove-Item -Recurse -Force $fullPath -ErrorAction Stop
       } catch {
-        Write-Warning "Could not remove $folder: $($_.Exception.Message)"
+        Write-Warning "Could not remove ${folder}: $($_.Exception.Message)"
       }
     }
   }
@@ -65,42 +65,70 @@ $scriptName = if ($Stable) { "serve:tailscale" } else { "dev:tailscale" }
 $modeName = if ($Stable) { "stable" } else { "dev" }
 
 Write-Host "Starting Porta $modeName server in the background..."
-$launcher = Start-Process -FilePath "powershell.exe" -ArgumentList @(
-  "-NoProfile",
-  "-ExecutionPolicy",
-  "Bypass",
-  "-Command",
-  "Set-Location -LiteralPath '$repoRoot'; pnpm $scriptName"
-) -WindowStyle Hidden -PassThru
 
-Write-Host "Launcher PID: $($launcher.Id)"
-
-$webUrl = "http://${tailscaleIp}:${WebPort}/"
-$healthUrl = "http://${tailscaleIp}:${ProxyPort}/api/health"
-$startupTimeoutSeconds = if ($Stable) { 180 } else { 45 }
-
-Write-Host "Waiting for $webUrl ..."
-if (-not (Wait-PortaHttpOk -Url $webUrl -TimeoutSeconds $startupTimeoutSeconds)) {
-  throw "Web UI did not become healthy at $webUrl"
+# Create a self-deleting Windows Scheduled Task to launch Porta.  This is the
+# most reliable way to get a truly detached process tree on Windows — the task
+# runs under the Task Scheduler service, so it has zero dependency on the
+# calling terminal's console host or session.
+# Collect and serialize caller's PORTA_* environment variables to preserve them
+$envAssignments = @()
+foreach ($envVar in Get-ChildItem Env:PORTA_*) {
+  $name = $envVar.Name
+  $val = $envVar.Value -replace '"', '`"'
+  $envAssignments += "`$env:$name = `"$val`""
 }
+$envBlock = $envAssignments -join "; "
+if ($envBlock) { $envBlock += "; " }
 
-Write-Host "Waiting for $healthUrl ..."
-if (-not (Wait-PortaHttpOk -Url $healthUrl -TimeoutSeconds $startupTimeoutSeconds)) {
-  throw "Proxy health did not become healthy through Vite at $healthUrl"
+$taskName = "PortaDev_$(Get-Random)"
+try {
+  $taskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"${envBlock}Set-Location -LiteralPath '$repoRoot'; pnpm $scriptName`"" -WorkingDirectory $repoRoot
+  $taskTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(1)
+  $taskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+  Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Settings $taskSettings -Force | Out-Null
+
+  # Start it immediately
+  Start-ScheduledTask -TaskName $taskName
+  Start-Sleep -Seconds 2
+
+  # Find the PID that the task spawned
+  $taskInfo = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction SilentlyContinue
+  $launcher = [pscustomobject]@{ Id = "task:$taskName" }
+
+  Write-Host "Launcher PID: $($launcher.Id)"
+
+  $webUrl = "http://${tailscaleIp}:${WebPort}/"
+  $healthUrl = "http://${tailscaleIp}:${ProxyPort}/api/health"
+  $startupTimeoutSeconds = if ($Stable) { 180 } else { 45 }
+
+  Write-Host "Waiting for $webUrl ..."
+  if (-not (Wait-PortaHttpOk -Url $webUrl -TimeoutSeconds $startupTimeoutSeconds)) {
+    throw "Web UI did not become healthy at $webUrl"
+  }
+
+  Write-Host "Waiting for $healthUrl ..."
+  if (-not (Wait-PortaHttpOk -Url $healthUrl -TimeoutSeconds $startupTimeoutSeconds)) {
+    throw "Proxy health did not become healthy through Vite at $healthUrl"
+  }
+
+  $health = Get-PortaHealth -HostAddress $tailscaleIp -ProxyPort $ProxyPort
+  $languageServerCount = @($health.languageServers).Count
+
+  if ($RequireLanguageServer -and $languageServerCount -eq 0) {
+    throw "Porta is running, but no Antigravity Language Server was discovered."
+  }
+
+  Write-Host "Porta is running:"
+  Write-Host "  Web UI:           $webUrl"
+  Write-Host "  Proxy:            http://${tailscaleIp}:${ProxyPort}"
+  Write-Host "  Mode:             $modeName"
+  Write-Host "  Language servers: $languageServerCount"
+} finally {
+  # Clean up the registered task so expired tasks do not accumulate
+  if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false | Out-Null
+  }
 }
-
-$health = Get-PortaHealth -HostAddress $tailscaleIp -ProxyPort $ProxyPort
-$languageServerCount = @($health.languageServers).Count
-
-if ($RequireLanguageServer -and $languageServerCount -eq 0) {
-  throw "Porta is running, but no Antigravity Language Server was discovered."
-}
-
-Write-Host "Porta is running:"
-Write-Host "  Web UI:           $webUrl"
-Write-Host "  Proxy:            http://${tailscaleIp}:${ProxyPort}"
-Write-Host "  Mode:             $modeName"
-Write-Host "  Language servers: $languageServerCount"
 
 if ($Tail) {
   $logFile = Join-Path $repoRoot "logs\proxy.log"
