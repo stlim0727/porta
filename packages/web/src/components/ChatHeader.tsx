@@ -6,6 +6,7 @@ interface Props {
   title: string;
   projectName?: string;
   workspaceUri?: string;
+  branchName?: string;
   cascadeId?: string;
   onMenuToggle?: () => void;
   chatSettings?: ChatSettings;
@@ -16,6 +17,7 @@ export function ChatHeader({
   title,
   projectName,
   workspaceUri,
+  branchName,
   cascadeId,
   onMenuToggle,
   chatSettings,
@@ -58,6 +60,7 @@ export function ChatHeader({
             cascadeId={cascadeId}
             projectName={projectName}
             workspaceUri={workspaceUri}
+            branchName={branchName}
             chatSettings={chatSettings}
             onOpenChatSettings={onOpenChatSettings}
           />

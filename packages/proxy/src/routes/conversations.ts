@@ -366,11 +366,13 @@ export function registerConversationRoutes(app: Hono): void {
   app.get("/api/conversations/:id/workspace-status", async (c) => {
     const id = c.req.param("id");
     const queryWsUri = c.req.query("workspaceUri");
+    const queryBranch = c.req.query("branchName") || c.req.query("branch");
     try {
       let workspaceUri: string | undefined = queryWsUri || undefined;
+      let branchName: string | undefined = queryBranch || undefined;
 
-      // 1. Try GetCascadeTrajectory RPC
-      if (!workspaceUri) {
+      // 1. Try GetCascadeTrajectory RPC to extract recorded workspace workspaceUri / branchName
+      if (!workspaceUri || !branchName) {
         try {
           const data = await rpcForConversation<{ trajectory?: unknown }>(
             "GetCascadeTrajectory",
@@ -380,7 +382,13 @@ export function registerConversationRoutes(app: Hono): void {
             true,
           );
           if (data?.trajectory) {
-            workspaceUri = getPrimaryWorkspaceUri(data.trajectory);
+            const workspaces = extractConversationWorkspaces(data.trajectory);
+            if (!workspaceUri) {
+              workspaceUri = workspaces[0]?.workspaceFolderAbsoluteUri;
+            }
+            if (!branchName) {
+              branchName = workspaces[0]?.branchName;
+            }
           }
         } catch {
           // ignore
@@ -405,19 +413,26 @@ export function registerConversationRoutes(app: Hono): void {
       }
 
       // 3. Try GetAllCascadeTrajectories summaries across all running instances
-      if (!workspaceUri) {
+      if (!workspaceUri || !branchName) {
         try {
           const instances = await discovery.getInstances();
           await Promise.allSettled(
             instances.map(async (inst) => {
-              if (workspaceUri) return;
+              if (workspaceUri && branchName) return;
               const data = await rpc.call<{
                 trajectorySummaries?: Record<string, unknown>;
               }>("GetAllCascadeTrajectories", {}, inst);
               const summary = data?.trajectorySummaries?.[id];
               if (summary) {
-                const uri = getPrimaryWorkspaceUri(summary);
-                if (uri) workspaceUri = uri;
+                const workspaces = extractConversationWorkspaces(summary);
+                if (!workspaceUri) {
+                  const uri = workspaces[0]?.workspaceFolderAbsoluteUri;
+                  if (uri) workspaceUri = uri;
+                }
+                if (!branchName) {
+                  const b = workspaces[0]?.branchName;
+                  if (b) branchName = b;
+                }
               }
             }),
           );
@@ -436,7 +451,7 @@ export function registerConversationRoutes(app: Hono): void {
         workspaceUri = process.cwd();
       }
 
-      const status = getWorkspaceStatus(workspaceUri, id);
+      const status = getWorkspaceStatus(workspaceUri, id, branchName);
       return c.json(status);
     } catch (err) {
       return handleRPCError(c, err);

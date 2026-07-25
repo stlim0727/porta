@@ -346,6 +346,7 @@ function ChatView() {
           title={headerTitle}
           projectName={projectSlug ?? undefined}
           workspaceUri={activeConv?.summary.workspaces?.[0]?.workspaceFolderAbsoluteUri || currentWorkspaceUri}
+          branchName={activeConv?.summary.workspaces?.[0]?.branchName}
           cascadeId={activeId ?? undefined}
           onMenuToggle={() => setSidebarOpen(true)}
           chatSettings={chatSettings}
@@ -492,6 +493,7 @@ function ChatView() {
           onUpdateSettings={handleUpdateChatSettings}
           onDeleteChat={() => handleDelete(activeId)}
           workspaceUri={activeConv?.summary.workspaces?.[0]?.workspaceFolderAbsoluteUri || currentWorkspaceUri}
+          branchName={activeConv?.summary.workspaces?.[0]?.branchName}
         />
       )}
     </div>
