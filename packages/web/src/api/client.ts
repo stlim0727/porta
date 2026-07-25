@@ -229,8 +229,10 @@ export const api = {
       { method: "DELETE" },
     ),
 
-  getWorkspaceStatus: (cascadeId: string) =>
+  getWorkspaceStatus: (cascadeId: string, workspaceUri?: string) =>
     request<import("../types").WorkspaceStatus>(
-      `/api/conversations/${cascadeId}/workspace-status`,
+      `/api/conversations/${cascadeId}/workspace-status${
+        workspaceUri ? `?workspaceUri=${encodeURIComponent(workspaceUri)}` : ""
+      }`,
     ),
 };

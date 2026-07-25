@@ -345,6 +345,7 @@ function ChatView() {
         <ChatHeader
           title={headerTitle}
           projectName={projectSlug ?? undefined}
+          workspaceUri={activeConv?.summary.workspaces?.[0]?.workspaceFolderAbsoluteUri || currentWorkspaceUri}
           cascadeId={activeId ?? undefined}
           onMenuToggle={() => setSidebarOpen(true)}
           chatSettings={chatSettings}

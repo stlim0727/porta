@@ -12,6 +12,7 @@ import {
   uriToWorkspaceId,
   normalizeWorkspaceId,
   rpcForConversation,
+  discoverOwnerInstance,
   getStepCount,
 } from "../routing.js";
 import {
@@ -364,21 +365,68 @@ export function registerConversationRoutes(app: Hono): void {
 
   app.get("/api/conversations/:id/workspace-status", async (c) => {
     const id = c.req.param("id");
+    const queryWsUri = c.req.query("workspaceUri");
     try {
-      let workspaceUri: string | undefined;
-      try {
-        const data = await rpcForConversation<{ trajectory?: { workspaces?: { workspaceFolderAbsoluteUri?: string }[] } }>(
-          "GetCascadeTrajectory",
-          id,
-          { cascadeId: id },
-          undefined,
-          true,
-        );
-        workspaceUri = data?.trajectory ? getPrimaryWorkspaceUri(data.trajectory) : undefined;
-      } catch {
-        // ignore
+      let workspaceUri: string | undefined = queryWsUri || undefined;
+
+      // 1. Try GetCascadeTrajectory RPC
+      if (!workspaceUri) {
+        try {
+          const data = await rpcForConversation<{ trajectory?: unknown }>(
+            "GetCascadeTrajectory",
+            id,
+            { cascadeId: id },
+            undefined,
+            true,
+          );
+          if (data?.trajectory) {
+            workspaceUri = getPrimaryWorkspaceUri(data.trajectory);
+          }
+        } catch {
+          // ignore
+        }
       }
 
+      // 2. Try stored affinity / owner instance
+      if (!workspaceUri) {
+        try {
+          const instances = await discovery.getInstances();
+          const owner = await discoverOwnerInstance(id, instances, true);
+          if (owner) {
+            const data = (await rpc.call("GetWorkspaceInfos", {}, owner)) as {
+              workspaceInfos?: { workspaceUri: string }[];
+            };
+            const match = data.workspaceInfos?.[0];
+            if (match) workspaceUri = match.workspaceUri;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 3. Try GetAllCascadeTrajectories summaries across all running instances
+      if (!workspaceUri) {
+        try {
+          const instances = await discovery.getInstances();
+          await Promise.allSettled(
+            instances.map(async (inst) => {
+              if (workspaceUri) return;
+              const data = await rpc.call<{
+                trajectorySummaries?: Record<string, unknown>;
+              }>("GetAllCascadeTrajectories", {}, inst);
+              const summary = data?.trajectorySummaries?.[id];
+              if (summary) {
+                const uri = getPrimaryWorkspaceUri(summary);
+                if (uri) workspaceUri = uri;
+              }
+            }),
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      // 4. Fallback if unresolvable
       if (!workspaceUri) {
         const instances = await discovery.getInstances();
         workspaceUri = await discoverSingleWorkspaceUri(instances);

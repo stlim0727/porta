@@ -6,6 +6,7 @@ import type { WorkspaceStatus, ChatSettings } from "../types";
 interface Props {
   cascadeId?: string;
   projectName?: string;
+  workspaceUri?: string;
   chatSettings?: ChatSettings;
   onOpenChatSettings?: () => void;
 }
@@ -13,6 +14,7 @@ interface Props {
 export function WorkspaceStatusBar({
   cascadeId,
   projectName,
+  workspaceUri,
   chatSettings,
   onOpenChatSettings,
 }: Props) {
@@ -25,7 +27,7 @@ export function WorkspaceStatusBar({
   const fetchStatus = async () => {
     if (!cascadeId) return;
     try {
-      const data = await api.getWorkspaceStatus(cascadeId);
+      const data = await api.getWorkspaceStatus(cascadeId, workspaceUri);
       setStatus(data);
       if (data.trackedPr) {
         setTrackedPrs([data.trackedPr]);
@@ -55,7 +57,7 @@ export function WorkspaceStatusBar({
       void fetchTrackedPrs();
     }, 8_000);
     return () => clearInterval(interval);
-  }, [cascadeId]);
+  }, [cascadeId, workspaceUri]);
 
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
