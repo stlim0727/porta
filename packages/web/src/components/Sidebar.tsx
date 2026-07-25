@@ -307,7 +307,7 @@ export function Sidebar({
           {isRunning && <IconSpinner size={13} className="item-indicator" />}
           {hasUpdates && <span className="item-dot" />}
           <button
-            className="sidebar-item-menu-btn"
+            className={`sidebar-item-menu-btn ${menuOpen === conv.id ? "active" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen(menuOpen === conv.id ? null : conv.id);

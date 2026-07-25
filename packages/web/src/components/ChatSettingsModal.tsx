@@ -9,6 +9,7 @@ interface Props {
   chatTitle?: string;
   settings: ChatSettings;
   onUpdateSettings: (patch: Partial<ChatSettings>) => Promise<void>;
+  onDeleteChat?: () => void;
 }
 
 const COMMON_PRESETS = ["git", "node", "pnpm", "npm", "bun", "python", "cargo", "docker", "deno"];
@@ -20,6 +21,7 @@ export function ChatSettingsModal({
   chatTitle,
   settings,
   onUpdateSettings,
+  onDeleteChat,
 }: Props) {
   const [customExe, setCustomExe] = useState("");
   const [saving, setSaving] = useState(false);
@@ -180,6 +182,52 @@ export function ChatSettingsModal({
               </label>
             </div>
           </div>
+
+          {onDeleteChat && (
+            <div
+              className="settings-section danger-section"
+              style={{
+                marginTop: "20px",
+                paddingTop: "16px",
+                borderTop: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))",
+              }}
+            >
+              <h4 className="settings-section-title" style={{ color: "#f87171" }}>
+                Danger Zone
+              </h4>
+              <div className="settings-row" style={{ alignItems: "center" }}>
+                <div className="settings-row-info">
+                  <span className="settings-row-label">Delete Chat</span>
+                  <span className="settings-row-desc">
+                    Permanently delete this chat conversation trajectory.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="chat-delete-btn"
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to delete this chat?")) {
+                      onDeleteChat();
+                      onClose();
+                    }
+                  }}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    background: "rgba(239, 68, 68, 0.15)",
+                    color: "#f87171",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    transition: "all 150ms ease",
+                  }}
+                >
+                  Delete Chat
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">

@@ -256,27 +256,51 @@ export function SettingsPanel({ settings, health, onUpdate, onBack }: Props) {
               <span className="settings-version-badge">
                 v{health?.proxy?.version ?? "0.13.0"}
               </span>
-              {health?.proxy?.gitCommit && (
-                <a
-                  href={health.proxy.gitCommit.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="settings-version-badge"
-                  style={{
-                    color: health.proxy.gitCommit.isPushed === false ? "#fbbf24" : "#38bdf8",
-                    borderColor: health.proxy.gitCommit.isPushed === false ? "rgba(251, 191, 36, 0.3)" : "rgba(56, 189, 248, 0.3)",
-                    background: health.proxy.gitCommit.isPushed === false ? "rgba(251, 191, 36, 0.1)" : "rgba(56, 189, 248, 0.1)",
-                    textDecoration: "none",
-                  }}
-                  title={
-                    health.proxy.gitCommit.isPushed === false
-                      ? `Local commit ${health.proxy.gitCommit.sha} (unpushed to remote)`
-                      : `View commit ${health.proxy.gitCommit.sha} on GitHub`
-                  }
-                >
-                  {health.proxy.gitCommit.shortSha} {health.proxy.gitCommit.isPushed === false ? "(local)" : "↗"}
-                </a>
-              )}
+              {health?.proxy?.gitCommit && (() => {
+                const commit = health.proxy.gitCommit;
+                const isDirty = commit.isDirty ?? false;
+                const isUnpushed = commit.isPushed === false;
+                const isWarn = isDirty || isUnpushed;
+
+                let badgeLabel = commit.shortSha;
+                if (isUnpushed && isDirty) {
+                  badgeLabel += " (local, dirty)";
+                } else if (isDirty) {
+                  badgeLabel += " (dirty)";
+                } else if (isUnpushed) {
+                  badgeLabel += " (local)";
+                } else {
+                  badgeLabel += " ↗";
+                }
+
+                let titleText = `Commit ${commit.sha}`;
+                if (isDirty) {
+                  titleText += " (with uncommitted changes)";
+                }
+                if (isUnpushed) {
+                  titleText += " (unpushed to remote)";
+                } else {
+                  titleText += " on GitHub";
+                }
+
+                return (
+                  <a
+                    href={commit.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="settings-version-badge"
+                    style={{
+                      color: isWarn ? "#fbbf24" : "#38bdf8",
+                      borderColor: isWarn ? "rgba(251, 191, 36, 0.3)" : "rgba(56, 189, 248, 0.3)",
+                      background: isWarn ? "rgba(251, 191, 36, 0.1)" : "rgba(56, 189, 248, 0.1)",
+                      textDecoration: "none",
+                    }}
+                    title={titleText}
+                  >
+                    {badgeLabel}
+                  </a>
+                );
+              })()}
             </div>
           </div>
           {health && (

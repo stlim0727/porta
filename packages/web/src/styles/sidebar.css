@@ -446,6 +446,19 @@
   transition: all var(--transition-fast);
 }
 
+.sidebar-item-menu-btn.active,
+.sidebar-item.active .sidebar-item-menu-btn {
+  display: flex;
+  opacity: 0.7;
+}
+
+@media (hover: none) {
+  .sidebar-item-menu-btn {
+    display: flex;
+    opacity: 0.6;
+  }
+}
+
 .context-menu {
   position: absolute;
   right: 0;

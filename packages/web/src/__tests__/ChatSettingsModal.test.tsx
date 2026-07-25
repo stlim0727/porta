@@ -101,4 +101,28 @@ describe("ChatSettingsModal", () => {
       autoApprovedExecutables: ["git", "node", "cargo"],
     });
   });
+
+  it("calls onDeleteChat and onClose when confirming delete chat", async () => {
+    const onDelete = vi.fn();
+    const onClose = vi.fn();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <ChatSettingsModal
+        isOpen={true}
+        onClose={onClose}
+        cascadeId="conv-1"
+        settings={defaultSettings}
+        onUpdateSettings={vi.fn()}
+        onDeleteChat={onDelete}
+      />,
+    );
+
+    const deleteBtn = screen.getByRole("button", { name: "Delete Chat" });
+    await userEvent.click(deleteBtn);
+
+    expect(window.confirm).toHaveBeenCalledWith("Are you sure you want to delete this chat?");
+    expect(onDelete).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
 });
