@@ -32,6 +32,7 @@ describe("ChatSettingsModal", () => {
         chatTitle="My Conversation"
         settings={defaultSettings}
         onUpdateSettings={vi.fn()}
+        onDeleteChat={vi.fn()}
       />,
     );
 
