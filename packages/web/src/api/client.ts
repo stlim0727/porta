@@ -229,10 +229,17 @@ export const api = {
       { method: "DELETE" },
     ),
 
-  getWorkspaceStatus: (cascadeId: string, workspaceUri?: string) =>
-    request<import("../types").WorkspaceStatus>(
-      `/api/conversations/${cascadeId}/workspace-status${
-        workspaceUri ? `?workspaceUri=${encodeURIComponent(workspaceUri)}` : ""
-      }`,
-    ),
+  getWorkspaceStatus: (
+    cascadeId: string,
+    workspaceUri?: string,
+    branchName?: string,
+  ) => {
+    const params = new URLSearchParams();
+    if (workspaceUri) params.set("workspaceUri", workspaceUri);
+    if (branchName) params.set("branchName", branchName);
+    const query = params.toString();
+    return request<import("../types").WorkspaceStatus>(
+      `/api/conversations/${cascadeId}/workspace-status${query ? `?${query}` : ""}`,
+    );
+  },
 };

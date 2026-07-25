@@ -7,6 +7,7 @@ interface Props {
   cascadeId?: string;
   projectName?: string;
   workspaceUri?: string;
+  branchName?: string;
   chatSettings?: ChatSettings;
   onOpenChatSettings?: () => void;
 }
@@ -15,6 +16,7 @@ export function WorkspaceStatusBar({
   cascadeId,
   projectName,
   workspaceUri,
+  branchName,
   chatSettings,
   onOpenChatSettings,
 }: Props) {
@@ -27,7 +29,11 @@ export function WorkspaceStatusBar({
   const fetchStatus = async () => {
     if (!cascadeId) return;
     try {
-      const data = await api.getWorkspaceStatus(cascadeId, workspaceUri);
+      const data = await api.getWorkspaceStatus(
+        cascadeId,
+        workspaceUri,
+        branchName,
+      );
       setStatus(data);
     } catch {
       // ignore
@@ -54,7 +60,7 @@ export function WorkspaceStatusBar({
       void fetchTrackedPrs();
     }, 8_000);
     return () => clearInterval(interval);
-  }, [cascadeId, workspaceUri]);
+  }, [cascadeId, workspaceUri, branchName]);
 
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 

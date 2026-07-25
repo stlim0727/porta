@@ -87,6 +87,7 @@ function parseOriginRepo(remoteUrl: string): string | undefined {
 export function getWorkspaceStatus(
   workspaceUri: string,
   conversationId?: string,
+  preferredBranch?: string,
 ): WorkspaceStatus {
   const localPath = uriToLocalPath(workspaceUri);
   const status: WorkspaceStatus = {
@@ -123,34 +124,38 @@ export function getWorkspaceStatus(
     }
   }
 
-  // 1. Get branch name
-  try {
-    const headPath = join(gitDir, "HEAD");
-    if (existsSync(headPath)) {
-      const headContent = readFileSync(headPath, "utf8").trim();
-      if (headContent.startsWith("ref: refs/heads/")) {
-        status.branch = headContent.slice("ref: refs/heads/".length).trim();
-      } else {
-        // Detached HEAD or commit hash
-        status.branch = headContent.slice(0, 7);
-      }
-    }
-  } catch {
-    // fallback
-  }
-
-  if (!status.branch) {
+  // 1. Get branch name (prefer explicit recorded branch for conversation)
+  if (preferredBranch && preferredBranch.trim()) {
+    status.branch = preferredBranch.trim();
+  } else {
     try {
-      const branch = execSync("git branch --show-current", {
-        cwd: localPath,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-      if (branch) {
-        status.branch = branch;
+      const headPath = join(gitDir, "HEAD");
+      if (existsSync(headPath)) {
+        const headContent = readFileSync(headPath, "utf8").trim();
+        if (headContent.startsWith("ref: refs/heads/")) {
+          status.branch = headContent.slice("ref: refs/heads/".length).trim();
+        } else {
+          // Detached HEAD or commit hash
+          status.branch = headContent.slice(0, 7);
+        }
       }
     } catch {
-      // ignore
+      // fallback
+    }
+
+    if (!status.branch) {
+      try {
+        const branch = execSync("git branch --show-current", {
+          cwd: localPath,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (branch) {
+          status.branch = branch;
+        }
+      } catch {
+        // ignore
+      }
     }
   }
 

@@ -1,7 +1,11 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { GitHubMonitor, parseGitHubPRUrls } from "../github-monitor.js";
+import { GitHubMonitor, githubMonitor, parseGitHubPRUrls } from "../github-monitor.js";
 import { registerGithubRoutes } from "../routes/github.js";
+
+process.env.PORTA_TRACKED_PRS_FILE = join(tmpdir(), `porta_test_prs_${Date.now()}.json`);
 
 describe("parseGitHubPRUrls", () => {
   it("extracts GitHub PR URLs from plain text and markdown", () => {
@@ -41,6 +45,8 @@ describe("GitHubMonitor", () => {
 
   beforeEach(() => {
     monitor = new GitHubMonitor();
+    monitor.clear();
+    githubMonitor.clear();
   });
 
   it("tracks and retrieves PRs per conversation", () => {
