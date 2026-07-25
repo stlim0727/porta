@@ -49,7 +49,7 @@ app.use(
 
 const PORTA_VERSION = "0.13.0";
 
-function getGitCommitInfo(): { sha: string; shortSha: string; url: string } | undefined {
+function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean } | undefined {
   try {
     const sha = execSync("git rev-parse HEAD", {
       encoding: "utf8",
@@ -72,13 +72,40 @@ function getGitCommitInfo(): { sha: string; shortSha: string; url: string } | un
     } catch {
       // fallback
     }
-    return { sha, shortSha, url: `${repoUrl}/commit/${sha}` };
+
+    let isPushed = false;
+    let branchName = "";
+    try {
+      branchName = execSync("git branch --show-current", {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      const contains = execSync("git branch -r --contains HEAD", {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      if (contains) {
+        isPushed = true;
+      }
+    } catch {
+      // ignore
+    }
+
+    const encodedBranch = branchName
+      ? branchName.split("/").map((seg) => encodeURIComponent(seg)).join("/")
+      : "";
+
+    const url = isPushed
+      ? `${repoUrl}/commit/${sha}`
+      : branchName
+        ? `${repoUrl}/tree/${encodedBranch}`
+        : repoUrl;
+
+    return { sha, shortSha, url, isPushed };
   } catch {
     return undefined;
   }
 }
-
-const cachedGitCommit = getGitCommitInfo();
 
 async function probeLanguageServer(instance: import("./discovery.js").LSInstance) {
   const start = Date.now();
@@ -126,7 +153,7 @@ app.get("/api/health", async (c) => {
       port: PORT,
       uptime: process.uptime(),
       version: PORTA_VERSION,
-      gitCommit: cachedGitCommit ?? getGitCommitInfo(),
+      gitCommit: getGitCommitInfo(),
       memory: process.memoryUsage(),
     },
     languageServers: lsDiagnostics,
@@ -146,7 +173,7 @@ app.get("/api/diagnostics", async (c) => {
       host: HOST,
       uptime: process.uptime(),
       version: PORTA_VERSION,
-      gitCommit: cachedGitCommit ?? getGitCommitInfo(),
+      gitCommit: getGitCommitInfo(),
       memory: process.memoryUsage(),
     },
     languageServers: lsDiagnostics,

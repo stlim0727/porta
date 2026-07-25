@@ -72,6 +72,15 @@
     font-size: 13px;
   }
 
+  .main-header-actions {
+    max-width: auto;
+    flex-shrink: 0;
+  }
+
+  .workspace-info-btn-text {
+    display: none;
+  }
+
   /* ── Chat area: reduced padding ── */
 
   .chat-area {

@@ -45,6 +45,7 @@ export interface HealthResponse {
       sha: string;
       shortSha: string;
       url: string;
+      isPushed?: boolean;
     };
   };
   languageServers: {
@@ -304,5 +305,23 @@ export interface ClientSettings {
 export interface ChatSettings {
   autoApprovedExecutables: string[];
   autoApproveAllCommands: boolean;
+}
+
+export interface WorkspaceStatus {
+  absolutePath: string;
+  isWorktree: boolean;
+  worktreeName?: string;
+  branch?: string;
+  gitOrigin?: string;
+  trackedPr?: {
+    id: string;
+    owner: string;
+    repo: string;
+    pullNumber: number;
+    url: string;
+    title?: string;
+    lastCiStatus?: "pending" | "success" | "failure" | "unknown";
+    lastReviewState?: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "NONE";
+  };
 }
 

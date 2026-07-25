@@ -1,5 +1,5 @@
 import { IconMenu, IconFolder, IconSettings } from "./Icons";
-import { GitHubPrBadge } from "./GitHubPrBadge";
+import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
 import type { ChatSettings } from "../types";
 
 interface Props {
@@ -51,7 +51,15 @@ export function ChatHeader({
         {title}
       </span>
       <div className="main-header-actions">
-        {onOpenChatSettings && (
+        {cascadeId && (
+          <WorkspaceStatusBar
+            cascadeId={cascadeId}
+            projectName={projectName}
+            chatSettings={chatSettings}
+            onOpenChatSettings={onOpenChatSettings}
+          />
+        )}
+        {!cascadeId && onOpenChatSettings && (
           <button
             type="button"
             className={`header-chat-settings-btn ${hasAutoExecutables ? "has-auto" : ""}`}
@@ -70,8 +78,7 @@ export function ChatHeader({
             )}
           </button>
         )}
-        {cascadeId && <GitHubPrBadge cascadeId={cascadeId} />}
-        {projectName && (
+        {projectName && !cascadeId && (
           <span className="main-header-project">
             <IconFolder size={11} /> {projectName}
           </span>

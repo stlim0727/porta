@@ -249,3 +249,25 @@ export const IconSettings = IconGear;
 
 export const IconChevronLeft = ({ size = 16, className }: IconProps) =>
   d(size, className, "m15 18-6-6 6-6");
+
+export const IconSliders = ({ size = 16, className }: IconProps) =>
+  m(size, className, [
+    "M4 21v-7",
+    "M4 10V3",
+    "M12 21v-9",
+    "M12 8V3",
+    "M20 21v-5",
+    "M20 12V3",
+    "M1 14h6",
+    "M9 8h6",
+    "M17 16h6",
+  ]);
+
+export const IconGitBranch = ({ size = 16, className }: IconProps) =>
+  m(size, className, [
+    "M6 3v12",
+    "M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+    "M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+    "M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+    "M18 9a9 9 0 0 1-9 9",
+  ]);
