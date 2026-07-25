@@ -195,43 +195,13 @@ export function getWorkspaceStatus(
     // ignore
   }
 
-  // 4. Auto-track PR if conversationId and branch are present
-  if (conversationId && status.branch && status.gitOrigin) {
-    const [owner, repo] = status.gitOrigin.split("/");
-    if (owner && repo) {
-      const trackedPRs = githubMonitor.getTrackedPRs(conversationId);
-      if (trackedPRs.length > 0) {
-        status.trackedPr = trackedPRs[0];
-      } else if (status.branch !== "main" && status.branch !== "master") {
-        // Async auto lookup
-        void autoLookupAndTrackPR(conversationId, owner, repo, status.branch);
-      }
+  // 4. Return tracked PR if explicitly tracked for this conversationId
+  if (conversationId) {
+    const trackedPRs = githubMonitor.getTrackedPRs(conversationId);
+    if (trackedPRs.length > 0) {
+      status.trackedPr = trackedPRs[0];
     }
   }
 
   return status;
-}
-
-async function autoLookupAndTrackPR(
-  conversationId: string,
-  owner: string,
-  repo: string,
-  branch: string,
-): Promise<void> {
-  try {
-    // Attempt gh cli check
-    const ghOutput = execSync(
-      `gh pr list --repo ${owner}/${repo} --head ${branch} --json number,url,title,state`,
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-    ).trim();
-
-    if (ghOutput) {
-      const prs = JSON.parse(ghOutput);
-      if (Array.isArray(prs) && prs.length > 0 && prs[0].number) {
-        githubMonitor.trackPR(conversationId, owner, repo, prs[0].number, true);
-      }
-    }
-  } catch {
-    // gh cli lookup failed or PR not found
-  }
 }
