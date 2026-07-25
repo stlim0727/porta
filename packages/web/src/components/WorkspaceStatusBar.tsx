@@ -30,7 +30,7 @@ export function WorkspaceStatusBar({
       const data = await api.getWorkspaceStatus(cascadeId, workspaceUri);
       setStatus(data);
       if (data.trackedPr) {
-        setTrackedPrs([data.trackedPr]);
+        setTrackedPrs((prev) => (prev.length === 0 ? [data.trackedPr] : prev));
       }
     } catch {
       // ignore
@@ -41,15 +41,15 @@ export function WorkspaceStatusBar({
     if (!cascadeId) return;
     try {
       const res = await api.getTrackedPRs(cascadeId);
-      if (res.prs && res.prs.length > 0) {
-        setTrackedPrs(res.prs);
-      }
+      setTrackedPrs(res.prs ?? []);
     } catch {
       // ignore
     }
   };
 
   useEffect(() => {
+    setTrackedPrs([]);
+    setStatus(null);
     void fetchStatus();
     void fetchTrackedPrs();
     const interval = setInterval(() => {
