@@ -230,7 +230,32 @@ export function ChatSettingsModal({
           )}
         </div>
 
-        <div className="modal-footer">
+        <div className="modal-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {onDeleteChat ? (
+            <button
+              type="button"
+              className="chat-delete-footer-btn"
+              onClick={() => {
+                if (window.confirm("Are you sure you want to delete this chat?")) {
+                  onDeleteChat();
+                  onClose();
+                }
+              }}
+              style={{
+                padding: "6px 14px",
+                borderRadius: "6px",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "13px",
+                transition: "all 150ms ease",
+              }}
+            >
+              Delete Chat
+            </button>
+          ) : <div />}
           <button className="settings-done-btn" onClick={onClose}>
             Done
           </button>
