@@ -568,7 +568,7 @@ export function WorkspaceStatusBar({
                       fontWeight: 500,
                     }}
                   >
-                    ⚙️ Configure
+                    ⚙️ Chat Settings
                   </button>
                 )}
               </div>
