@@ -309,8 +309,10 @@ export interface ChatSettings {
 
 export interface WorkspaceStatus {
   absolutePath: string;
+  ideWorkspacePath?: string;
   isWorktree: boolean;
   worktreeName?: string;
+  worktreePath?: string;
   branch?: string;
   gitOrigin?: string;
   trackedPr?: {
