@@ -34,12 +34,12 @@ function Get-PortaPortPids {
       $parts = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
       if ($parts.Length -ge 5) {
         $localAddr = $parts[1]
-        $pid = [int]$parts[-1]
+        $listeningPid = [int]$parts[-1]
         
         foreach ($port in $Ports) {
           if ($localAddr.EndsWith(":$port")) {
-            if ($pid -gt 0 -and $pid -ne $PID) {
-              [void]$pids.Add($pid)
+            if ($listeningPid -gt 0 -and $listeningPid -ne $PID) {
+              [void]$pids.Add($listeningPid)
             }
           }
         }
@@ -57,8 +57,8 @@ function Get-PortaDevProcesses {
 
   $portPids = [System.Collections.Generic.HashSet[int]]::new()
   if ($Ports -and $Ports.Length -gt 0) {
-    foreach ($pid in (Get-PortaPortPids -Ports $Ports)) {
-      [void]$portPids.Add($pid)
+    foreach ($portPid in (Get-PortaPortPids -Ports $Ports)) {
+      [void]$portPids.Add($portPid)
     }
   }
 

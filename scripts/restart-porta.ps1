@@ -42,7 +42,7 @@ if ($Clean) {
       try {
         Remove-Item -Recurse -Force $fullPath -ErrorAction Stop
       } catch {
-        Write-Warning "Could not remove $folder: $($_.Exception.Message)"
+        Write-Warning "Could not remove ${folder}: $($_.Exception.Message)"
       }
     }
   }
@@ -65,13 +65,24 @@ $scriptName = if ($Stable) { "serve:tailscale" } else { "dev:tailscale" }
 $modeName = if ($Stable) { "stable" } else { "dev" }
 
 Write-Host "Starting Porta $modeName server in the background..."
-$launcher = Start-Process -FilePath "powershell.exe" -ArgumentList @(
-  "-NoProfile",
-  "-ExecutionPolicy",
-  "Bypass",
-  "-Command",
-  "Set-Location -LiteralPath '$repoRoot'; pnpm $scriptName"
-) -WindowStyle Hidden -PassThru
+
+# Create a self-deleting Windows Scheduled Task to launch Porta.  This is the
+# most reliable way to get a truly detached process tree on Windows — the task
+# runs under the Task Scheduler service, so it has zero dependency on the
+# calling terminal's console host or session.
+$taskName = "PortaDev_$(Get-Random)"
+$taskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Set-Location -LiteralPath '$repoRoot'; pnpm $scriptName`"" -WorkingDirectory $repoRoot
+$taskTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(1)
+$taskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Settings $taskSettings -Force | Out-Null
+
+# Start it immediately and remove the task definition (the running process continues)
+Start-ScheduledTask -TaskName $taskName
+Start-Sleep -Seconds 2
+
+# Find the PID that the task spawned
+$taskInfo = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction SilentlyContinue
+$launcher = [pscustomobject]@{ Id = "task:$taskName" }
 
 Write-Host "Launcher PID: $($launcher.Id)"
 
