@@ -62,18 +62,18 @@ export function ChatHeader({
             onOpenChatSettings={onOpenChatSettings}
           />
         )}
-        {onOpenChatSettings && (
+        {!cascadeId && onOpenChatSettings && (
           <button
             type="button"
             className={`header-chat-settings-btn ${hasAutoExecutables ? "has-auto" : ""}`}
             onClick={onOpenChatSettings}
             title={
               hasAutoExecutables
-                ? `Chat Settings (Auto-approving: ${autoLabel})`
-                : "Chat Settings & Options"
+                ? `Auto-approving: ${autoLabel}`
+                : "Configure per-chat auto-approval"
             }
           >
-            <IconSettings size={14} />
+            <IconSettings size={13} />
             {hasAutoExecutables && (
               <span className="auto-approve-badge-text">
                 Auto: {autoLabel}
