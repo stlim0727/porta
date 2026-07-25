@@ -158,7 +158,7 @@ async function autoLookupAndTrackPR(
     if (ghOutput) {
       const prs = JSON.parse(ghOutput);
       if (Array.isArray(prs) && prs.length > 0 && prs[0].number) {
-        githubMonitor.trackPR(conversationId, owner, repo, prs[0].number, false);
+        githubMonitor.trackPR(conversationId, owner, repo, prs[0].number, true);
       }
     }
   } catch {
