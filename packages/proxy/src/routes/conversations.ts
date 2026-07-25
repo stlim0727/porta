@@ -380,10 +380,8 @@ export function registerConversationRoutes(app: Hono): void {
       }
 
       if (!workspaceUri) {
-        const wsId = conversationAffinity.get(id);
-        if (wsId && wsId.startsWith("file_")) {
-          workspaceUri = wsId.replace(/^file_/, "file:///").replace(/_/g, "/");
-        }
+        const instances = await discovery.getInstances();
+        workspaceUri = await discoverSingleWorkspaceUri(instances);
       }
 
       if (!workspaceUri) {

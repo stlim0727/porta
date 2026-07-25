@@ -12,6 +12,7 @@ interface Props {
 
 export function WorkspaceStatusBar({
   cascadeId,
+  projectName,
   chatSettings,
   onOpenChatSettings,
 }: Props) {
@@ -57,10 +58,9 @@ export function WorkspaceStatusBar({
     return () => clearInterval(interval);
   }, [cascadeId]);
 
-  if (!status || !status.absolutePath) return null;
-
   const handleCopyPath = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!status?.absolutePath) return;
     void navigator.clipboard.writeText(status.absolutePath);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -106,11 +106,14 @@ export function WorkspaceStatusBar({
   };
 
   const folderName =
-    status.worktreeName ||
-    status.absolutePath.split(/[/\\]/).filter(Boolean).pop() ||
-    status.absolutePath;
+    status?.worktreeName ||
+    (status?.absolutePath
+      ? status.absolutePath.split(/[/\\]/).filter(Boolean).pop()
+      : undefined) ||
+    projectName ||
+    "Workspace Info";
 
-  const activePr = trackedPrs.length > 0 ? trackedPrs[0] : status.trackedPr;
+  const activePr = trackedPrs.length > 0 ? trackedPrs[0] : status?.trackedPr;
 
   const hasAutoExecutables =
     chatSettings &&
@@ -158,7 +161,7 @@ export function WorkspaceStatusBar({
         }}
         title="Workspace, Git & Session Info"
       >
-        {status.isWorktree ? (
+        {status?.isWorktree ? (
           <span style={{ fontSize: "12px" }}>🌴</span>
         ) : (
           <IconSliders size={14} />
@@ -261,24 +264,26 @@ export function WorkspaceStatusBar({
                   gap: "8px",
                 }}
               >
-                <span>{status.absolutePath}</span>
-                <button
-                  onClick={handleCopyPath}
-                  style={{
-                    background: copied ? "#166534" : "#334155",
-                    border: "none",
-                    borderRadius: "4px",
-                    color: "#fff",
-                    fontSize: "11px",
-                    padding: "3px 8px",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  {copied ? "✓ Copied" : "📋 Copy"}
-                </button>
+                <span>{status?.absolutePath || "Workspace path loading..."}</span>
+                {status?.absolutePath && (
+                  <button
+                    onClick={handleCopyPath}
+                    style={{
+                      background: copied ? "#166534" : "#334155",
+                      border: "none",
+                      borderRadius: "4px",
+                      color: "#fff",
+                      fontSize: "11px",
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {copied ? "✓ Copied" : "📋 Copy"}
+                  </button>
+                )}
               </div>
-              {status.isWorktree && (
+              {status?.isWorktree && (
                 <div style={{ marginTop: "4px", fontSize: "11px", color: "#38bdf8", fontWeight: 500 }}>
                   🌴 Git Worktree: {status.worktreeName || folderName}
                 </div>
@@ -304,7 +309,7 @@ export function WorkspaceStatusBar({
                 }}
               >
                 <span>🌿</span>
-                <span>{status.branch || "No active branch"}</span>
+                <span>{status?.branch || "No active branch"}</span>
               </div>
             </div>
 
