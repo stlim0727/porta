@@ -18,7 +18,6 @@ export function WorkspaceStatusBar({
 }: Props) {
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [newUrl, setNewUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [trackedPrs, setTrackedPrs] = useState<any[]>([]);
@@ -58,13 +57,25 @@ export function WorkspaceStatusBar({
     return () => clearInterval(interval);
   }, [cascadeId]);
 
-  const handleCopyPath = (e: React.MouseEvent) => {
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
+
+  const handleCopyText = (e: React.MouseEvent, text: string) => {
     e.stopPropagation();
-    if (!status?.absolutePath) return;
-    void navigator.clipboard.writeText(status.absolutePath);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    void navigator.clipboard.writeText(text);
+    setCopiedPath(text);
+    setTimeout(() => setCopiedPath(null), 2000);
   };
+
+  const handleCopyPath = (e: React.MouseEvent) => {
+    if (!status?.absolutePath) return;
+    handleCopyText(e, status.absolutePath);
+  };
+
+  const hasSeparateWorktree =
+    status?.isWorktree &&
+    status?.worktreePath &&
+    status?.ideWorkspacePath &&
+    status.worktreePath.toLowerCase() !== status.ideWorkspacePath.toLowerCase();
 
   const handleAddPR = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,51 +265,138 @@ export function WorkspaceStatusBar({
               </button>
             </div>
 
-            {/* Section 1: Absolute Path & Worktree */}
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
-                <IconFolder size={12} /> Working Directory
-              </div>
-              <div
-                style={{
-                  background: "#1e293b",
-                  borderRadius: "6px",
-                  padding: "8px 10px",
-                  wordBreak: "break-all",
-                  fontSize: "12px",
-                  fontFamily: "monospace",
-                  color: "#e2e8f0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span>{status?.absolutePath || "Workspace path loading..."}</span>
-                {status?.absolutePath && (
-                  <button
-                    onClick={handleCopyPath}
+            {/* Section 1: Working Directory / Worktree */}
+            {hasSeparateWorktree ? (
+              <>
+                {/* IDE Workspace Root */}
+                <div style={{ marginBottom: "10px" }}>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <IconFolder size={12} /> IDE Workspace Root
+                  </div>
+                  <div
                     style={{
-                      background: copied ? "#166534" : "#334155",
-                      border: "none",
-                      borderRadius: "4px",
-                      color: "#fff",
-                      fontSize: "11px",
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      flexShrink: 0,
+                      background: "#1e293b",
+                      borderRadius: "6px",
+                      padding: "8px 10px",
+                      wordBreak: "break-all",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                      color: "#cbd5e1",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "8px",
                     }}
                   >
-                    {copied ? "✓ Copied" : "📋 Copy"}
-                  </button>
+                    <span>{status?.ideWorkspacePath}</span>
+                    {status?.ideWorkspacePath && (
+                      <button
+                        onClick={(e) => handleCopyText(e, status.ideWorkspacePath!)}
+                        style={{
+                          background: copiedPath === status.ideWorkspacePath ? "#166534" : "#334155",
+                          border: "none",
+                          borderRadius: "4px",
+                          color: "#fff",
+                          fontSize: "11px",
+                          padding: "3px 8px",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {copiedPath === status.ideWorkspacePath ? "✓ Copied" : "📋 Copy"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Active Git Worktree */}
+                <div style={{ marginBottom: "12px" }}>
+                  <div style={{ fontSize: "11px", color: "#38bdf8", fontWeight: 600, textTransform: "uppercase", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span>🌴</span> Active Git Worktree ({status?.worktreeName})
+                  </div>
+                  <div
+                    style={{
+                      background: "#0c2a38",
+                      border: "1px solid #0284c7",
+                      borderRadius: "6px",
+                      padding: "8px 10px",
+                      wordBreak: "break-all",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                      color: "#7dd3fc",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span>{status?.worktreePath}</span>
+                    {status?.worktreePath && (
+                      <button
+                        onClick={(e) => handleCopyText(e, status.worktreePath!)}
+                        style={{
+                          background: copiedPath === status.worktreePath ? "#166534" : "#0369a1",
+                          border: "none",
+                          borderRadius: "4px",
+                          color: "#fff",
+                          fontSize: "11px",
+                          padding: "3px 8px",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {copiedPath === status.worktreePath ? "✓ Copied" : "📋 Copy"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ marginBottom: "12px" }}>
+                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <IconFolder size={12} /> Working Directory
+                </div>
+                <div
+                  style={{
+                    background: "#1e293b",
+                    borderRadius: "6px",
+                    padding: "8px 10px",
+                    wordBreak: "break-all",
+                    fontSize: "12px",
+                    fontFamily: "monospace",
+                    color: "#e2e8f0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>{status?.absolutePath || "Workspace path loading..."}</span>
+                  {status?.absolutePath && (
+                    <button
+                      onClick={handleCopyPath}
+                      style={{
+                        background: copiedPath === status.absolutePath ? "#166534" : "#334155",
+                        border: "none",
+                        borderRadius: "4px",
+                        color: "#fff",
+                        fontSize: "11px",
+                        padding: "3px 8px",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {copiedPath === status.absolutePath ? "✓ Copied" : "📋 Copy"}
+                    </button>
+                  )}
+                </div>
+                {status?.isWorktree && (
+                  <div style={{ marginTop: "4px", fontSize: "11px", color: "#38bdf8", fontWeight: 500 }}>
+                    🌴 Git Worktree: {status.worktreeName || folderName}
+                  </div>
                 )}
               </div>
-              {status?.isWorktree && (
-                <div style={{ marginTop: "4px", fontSize: "11px", color: "#38bdf8", fontWeight: 500 }}>
-                  🌴 Git Worktree: {status.worktreeName || folderName}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Section 2: Git Branch */}
             <div style={{ marginBottom: "12px" }}>

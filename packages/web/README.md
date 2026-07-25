@@ -16,7 +16,7 @@ pnpm test       # Vitest
 - **Router:** React Router v7 with `BrowserRouter`; set `PORTA_BASE_PATH` when hosting under a subpath.
 - **State:** React hooks + context. No external state management library.
 - **Styling:** Vanilla CSS with CSS custom properties.
-- **PWA:** `vite-plugin-pwa` with `autoUpdate` strategy.
+- **PWA:** `vite-plugin-pwa` with `prompt` strategy.
 - **Markdown:** `marked` for rendering assistant responses.
 
 ## Build-time environment

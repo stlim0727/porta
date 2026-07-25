@@ -10,11 +10,50 @@ import { githubMonitor, type TrackedPR } from "./github-monitor.js";
 
 export interface WorkspaceStatus {
   absolutePath: string;
+  ideWorkspacePath?: string;
   isWorktree: boolean;
   worktreeName?: string;
+  worktreePath?: string;
   branch?: string;
   gitOrigin?: string; // owner/repo e.g. "stlim0727/porta"
   trackedPr?: TrackedPR;
+}
+
+interface WorktreeEntry {
+  path: string;
+  branch?: string;
+}
+
+function parseGitWorktrees(cwd: string): WorktreeEntry[] {
+  try {
+    const raw = execSync("git worktree list --porcelain", {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (!raw) return [];
+
+    const entries: WorktreeEntry[] = [];
+    const blocks = raw.split("\n\n");
+    for (const block of blocks) {
+      const lines = block.split("\n");
+      let path = "";
+      let branch = "";
+      for (const line of lines) {
+        if (line.startsWith("worktree ")) {
+          path = normalize(line.slice(9).trim());
+        } else if (line.startsWith("branch refs/heads/")) {
+          branch = line.slice("branch refs/heads/".length).trim();
+        }
+      }
+      if (path) {
+        entries.push({ path, branch: branch || undefined });
+      }
+    }
+    return entries;
+  } catch {
+    return [];
+  }
 }
 
 export function uriToLocalPath(uri: string): string {
@@ -52,6 +91,7 @@ export function getWorkspaceStatus(
   const localPath = uriToLocalPath(workspaceUri);
   const status: WorkspaceStatus = {
     absolutePath: localPath,
+    ideWorkspacePath: localPath,
     isWorktree: false,
   };
 
@@ -68,6 +108,7 @@ export function getWorkspaceStatus(
       if (st.isFile()) {
         status.isWorktree = true;
         status.worktreeName = basename(localPath);
+        status.worktreePath = localPath;
         const content = readFileSync(gitPath, "utf8").trim();
         const match = content.match(/^gitdir:\s*(.+)$/i);
         if (match && match[1]) {
@@ -113,7 +154,36 @@ export function getWorkspaceStatus(
     }
   }
 
-  // 2. Get origin repo
+  // 2. Check git worktrees for this repository
+  const worktrees = parseGitWorktrees(localPath);
+  if (worktrees.length > 0) {
+    const currentNorm = localPath.toLowerCase();
+    const mainWorktree = worktrees[0];
+    const branchWorktree = status.branch
+      ? worktrees.find(
+          (w) => w.branch && w.branch.toLowerCase() === status.branch?.toLowerCase(),
+        )
+      : undefined;
+
+    const activeWorktree = branchWorktree || worktrees.find((w) => w.path.toLowerCase() === currentNorm);
+
+    if (activeWorktree) {
+      status.worktreePath = activeWorktree.path;
+      status.worktreeName = basename(activeWorktree.path);
+      const isDiffPath = activeWorktree.path.toLowerCase() !== currentNorm;
+      const isDiffMain = mainWorktree && activeWorktree.path.toLowerCase() !== mainWorktree.path.toLowerCase();
+
+      if (isDiffPath || isDiffMain) {
+        status.isWorktree = true;
+      }
+
+      if (isDiffPath) {
+        status.absolutePath = activeWorktree.path;
+      }
+    }
+  }
+
+  // 3. Get origin repo
   try {
     const remoteUrl = execSync("git config --get remote.origin.url", {
       cwd: localPath,
@@ -125,7 +195,7 @@ export function getWorkspaceStatus(
     // ignore
   }
 
-  // 3. Auto-track PR if conversationId and branch are present
+  // 4. Auto-track PR if conversationId and branch are present
   if (conversationId && status.branch && status.gitOrigin) {
     const [owner, repo] = status.gitOrigin.split("/");
     if (owner && repo) {
