@@ -73,15 +73,12 @@
   }
 
   .main-header-actions {
-    max-width: 55%;
+    max-width: auto;
+    flex-shrink: 0;
   }
 
-  .workspace-status-text {
-    max-width: 80px;
-  }
-
-  .workspace-status-branch {
-    max-width: 70px;
+  .workspace-info-btn-text {
+    display: none;
   }
 
   /* ── Chat area: reduced padding ── */
