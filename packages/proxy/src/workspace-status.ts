@@ -124,49 +124,52 @@ export function getWorkspaceStatus(
     }
   }
 
-  // 1. Get branch name (prefer explicit recorded branch for conversation)
-  if (preferredBranch && preferredBranch.trim()) {
-    status.branch = preferredBranch.trim();
-  } else {
+  // 1. Get branch name — always from disk HEAD
+  try {
+    const headPath = join(gitDir, "HEAD");
+    if (existsSync(headPath)) {
+      const headContent = readFileSync(headPath, "utf8").trim();
+      if (headContent.startsWith("ref: refs/heads/")) {
+        status.branch = headContent.slice("ref: refs/heads/".length).trim();
+      } else {
+        // Detached HEAD or commit hash
+        status.branch = headContent.slice(0, 7);
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  if (!status.branch) {
     try {
-      const headPath = join(gitDir, "HEAD");
-      if (existsSync(headPath)) {
-        const headContent = readFileSync(headPath, "utf8").trim();
-        if (headContent.startsWith("ref: refs/heads/")) {
-          status.branch = headContent.slice("ref: refs/heads/".length).trim();
-        } else {
-          // Detached HEAD or commit hash
-          status.branch = headContent.slice(0, 7);
-        }
+      const branch = execSync("git branch --show-current", {
+        cwd: localPath,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      if (branch) {
+        status.branch = branch;
       }
     } catch {
-      // fallback
-    }
-
-    if (!status.branch) {
-      try {
-        const branch = execSync("git branch --show-current", {
-          cwd: localPath,
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim();
-        if (branch) {
-          status.branch = branch;
-        }
-      } catch {
-        // ignore
-      }
+      // ignore
     }
   }
 
   // 2. Check git worktrees for this repository
+  //    Use preferredBranch (from conversation metadata) to find the correct
+  //    worktree when the workspace has multiple worktrees and the conversation
+  //    was started on a specific branch/worktree.
   const worktrees = parseGitWorktrees(localPath);
   if (worktrees.length > 0) {
     const currentNorm = localPath.toLowerCase();
     const mainWorktree = worktrees[0];
-    const branchWorktree = status.branch
+
+    // If the conversation has a recorded branch that maps to a specific
+    // worktree different from the cwd, use that worktree.
+    const lookupBranch = preferredBranch?.trim() || status.branch;
+    const branchWorktree = lookupBranch
       ? worktrees.find(
-          (w) => w.branch && w.branch.toLowerCase() === status.branch?.toLowerCase(),
+          (w) => w.branch && w.branch.toLowerCase() === lookupBranch.toLowerCase(),
         )
       : undefined;
 
@@ -184,6 +187,10 @@ export function getWorkspaceStatus(
 
       if (isDiffPath) {
         status.absolutePath = activeWorktree.path;
+        // When resolving to a different worktree, use that worktree's branch
+        if (activeWorktree.branch) {
+          status.branch = activeWorktree.branch;
+        }
       }
     }
   }
