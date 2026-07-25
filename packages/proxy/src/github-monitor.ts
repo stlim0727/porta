@@ -7,9 +7,19 @@
  */
 
 import { execSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { rpcForConversation } from "./routing.js";
 import { getMetadata } from "./metadata.js";
 import { conversationSignals } from "./signals.js";
+
+const TRACKED_PRS_FILE = join(
+  homedir(),
+  ".gemini",
+  "antigravity",
+  "porta_tracked_prs.json",
+);
 
 export interface CICheck {
   name: string;
@@ -79,6 +89,36 @@ export class GitHubMonitor {
 
   constructor() {
     this.token = getGitHubToken();
+    this.load();
+  }
+
+  private load() {
+    try {
+      if (existsSync(TRACKED_PRS_FILE)) {
+        const raw = readFileSync(TRACKED_PRS_FILE, "utf8");
+        const parsed = JSON.parse(raw) as Record<string, TrackedPR>;
+        for (const [key, pr] of Object.entries(parsed)) {
+          if (pr && pr.conversationId) {
+            this.trackedPRs.set(key, pr);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[github-monitor] Failed to load tracked PRs:", err);
+    }
+  }
+
+  private persist() {
+    try {
+      mkdirSync(dirname(TRACKED_PRS_FILE), { recursive: true });
+      const obj: Record<string, TrackedPR> = {};
+      for (const [key, pr] of this.trackedPRs.entries()) {
+        obj[key] = pr;
+      }
+      writeFileSync(TRACKED_PRS_FILE, JSON.stringify(obj, null, 2), "utf8");
+    } catch (err) {
+      console.error("[github-monitor] Failed to persist tracked PRs:", err);
+    }
   }
 
   public onEvent(listener: (event: { type: string; pr: TrackedPR }) => void): () => void {
@@ -122,6 +162,7 @@ export class GitHubMonitor {
     };
 
     this.trackedPRs.set(key, pr);
+    this.persist();
     console.log(`[github-monitor] Tracking PR ${pr.id} for conversation ${conversationId}`);
     
     // Initial fetch async
@@ -134,6 +175,7 @@ export class GitHubMonitor {
     const key = `${conversationId}:${owner}/${repo}#${pullNumber}`;
     const deleted = this.trackedPRs.delete(key);
     if (deleted) {
+      this.persist();
       console.log(`[github-monitor] Untracked PR ${owner}/${repo}#${pullNumber} for conversation ${conversationId}`);
     }
     return deleted;
@@ -240,6 +282,7 @@ export class GitHubMonitor {
       };
 
       this.trackedPRs.set(key, updatedPR);
+      this.persist();
 
       // Trigger Notifications / Agent Messages on Transition
       if (prevCiStatus && prevCiStatus !== ciStatus) {
