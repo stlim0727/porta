@@ -356,6 +356,10 @@ export function setupWebSocket(
                       })
                       .catch((err) => {
                         console.error(`[ws:${shortId}] Auto-approval failed:`, err);
+                        // Delay clearing so LS has time to register input listener before retry
+                        setTimeout(() => {
+                          autoApprovedSteps.delete(key);
+                        }, 500);
                       });
                   }
                 }
