@@ -410,17 +410,17 @@ export class GitHubMonitor {
   }
 
   public startPolling(intervalMs = 30_000): void {
-    if (this.pollInterval) return;
-    this.pollInterval = setInterval(() => {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => {
       void this.pollAll();
     }, intervalMs);
     console.log(`[github-monitor] Polling started (interval: ${intervalMs}ms)`);
   }
 
   public stopPolling(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = undefined;
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
       console.log("[github-monitor] Polling stopped");
     }
   }

@@ -56,6 +56,7 @@ export function useStepsStream(
   const mountedRef = useRef(true);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityTimeRef = useRef(Date.now());
   const stepsRef = useRef<TrajectoryStep[]>([]);
   // The absolute offset of stepsRef[0] in the full trajectory.
   const baseOffsetRef = useRef(0);
@@ -175,6 +176,7 @@ export function useStepsStream(
           ) {
             return;
           }
+          lastActivityTimeRef.current = Date.now();
           try {
             const msg = JSON.parse(event.data);
 
@@ -302,6 +304,39 @@ export function useStepsStream(
       }
     };
   }, [initialFetch, connectWs, clearReconnectTimer, bumpGeneration]);
+
+  // ── Stall Watchdog ──
+  // If wsRunning is true but no WS message has arrived for > 10s,
+  // query API to verify if the conversation is still running. If not, auto-unstick UI.
+  useEffect(() => {
+    if (!wsRunning) return;
+    lastActivityTimeRef.current = Date.now();
+
+    const watchdogInterval = setInterval(async () => {
+      if (!mountedRef.current) return;
+      const idleTimeMs = Date.now() - lastActivityTimeRef.current;
+      if (idleTimeMs >= 10000) {
+        try {
+          const conv = await api.getConversation(cascadeId);
+          if (!mountedRef.current) return;
+          const status = conv?.summary?.status;
+          if (status && status !== "CASCADE_RUN_STATUS_RUNNING") {
+            console.log(
+              `[useStepsStream] Stall watchdog detected terminal status (${status}). Auto-unsticking UI.`,
+            );
+            setWsRunning(false);
+            onIdleRef.current?.();
+          }
+        } catch (err) {
+          console.warn("[useStepsStream] Stall watchdog fetch failed:", err);
+        }
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(watchdogInterval);
+    };
+  }, [cascadeId, wsRunning]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

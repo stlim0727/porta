@@ -55,6 +55,14 @@ export interface RPCDiagnosticError {
   timestamp: string;
 }
 
+const IDEMPOTENT_GETTER_METHODS = new Set([
+  "GetCascadeTrajectorySteps",
+  "GetCascadeTrajectory",
+  "GetWorkspaceInfos",
+  "GetProcesses",
+  "GetChatSettings",
+]);
+
 export class RPCClient {
   private recentErrors: RPCDiagnosticError[] = [];
   private totalRequests = 0;
@@ -87,8 +95,31 @@ export class RPCClient {
   /**
    * Call a Connect RPC method on the Language Server.
    * Tries the last successful transport first, then the alternate transport.
+   * Retries once for idempotent getter methods if a timeout occurs.
    */
   async call<T = unknown>(
+    method: string,
+    body: Record<string, unknown> = {},
+    instance?: LSInstance,
+    silent = false,
+  ): Promise<T> {
+    try {
+      return await this.executeCall<T>(method, body, instance, silent);
+    } catch (err) {
+      const isIdempotent = IDEMPOTENT_GETTER_METHODS.has(method);
+      if (
+        isIdempotent &&
+        err instanceof RPCError &&
+        (err.code === "deadline_exceeded" || err.message.includes("timed out"))
+      ) {
+        console.warn(`[rpc] ${method} timed out; retrying once...`);
+        return await this.executeCall<T>(method, body, instance, silent);
+      }
+      throw err;
+    }
+  }
+
+  private async executeCall<T = unknown>(
     method: string,
     body: Record<string, unknown> = {},
     instance?: LSInstance,
