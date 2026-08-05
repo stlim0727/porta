@@ -47,7 +47,7 @@ app.use(
   }),
 );
 
-const PORTA_VERSION = "0.13.0";
+const PORTA_VERSION = "0.15.0";
 
 function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean; isDirty: boolean } | undefined {
   try {
