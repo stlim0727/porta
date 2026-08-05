@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-03
+
+### Added
+
+- Antigravity subagent activity is now shown as rich status cards with agent
+  roles, types, prompts, tool actions, and execution states. (#122)
+
+### Fixed
+
+- Subagent cards now support both current native `invokeSubagent` payloads and
+  older captures where invocation arguments are stored on the preceding planner
+  response. (#124)
+- Multiple invoked subagents are all displayed, and `define_subagent`,
+  `send_message`, and `manage_subagents` are rendered with tool-specific
+  details. (#124)
+- Pending, running, completed, canceled, interrupted, invalid, and failed
+  subagent states are now visually distinguishable. (#124)
+
+### Security
+
+- Updated `brace-expansion` to a version containing upstream regular-expression
+  denial-of-service fixes. (#118)
+
+## [0.14.0] - 2026-07-26
+
+### Added
+
+- An optional Windows deployment recipe can now keep Porta and a Cloudflare
+  Tunnel available with a self-healing scheduled watchdog, ownership-tracked
+  process lifecycle, validated configuration, and a safe stop/uninstall path.
+  (#110)
+
+### Security
+
+- Public Vite deployments can now require token authentication for every HTTP,
+  API, and WebSocket request. The access gate validates deployment settings and
+  fails closed for missing or malformed credentials. (#110)
+- Updated `brace-expansion`, `@hono/node-server`, Hono, and `fast-uri` to
+  versions containing upstream security fixes. (#111, #114)
 ## [0.13.0] - 2026-07-13
 
 ### Added
@@ -270,7 +309,9 @@ Initial public release.
 - Remote access via Cloudflare Named Tunnel + Pages + Zero Trust
 - Cross-platform support: Linux (Tier 1), Windows (Tier 2), macOS (Tier 3)
 
-[Unreleased]: https://github.com/L1M80/porta/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/L1M80/porta/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/L1M80/porta/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/L1M80/porta/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/L1M80/porta/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/L1M80/porta/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/L1M80/porta/compare/v0.10.0...v0.11.0

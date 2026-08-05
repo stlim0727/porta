@@ -153,7 +153,6 @@ export const api = {
         body: JSON.stringify(patch),
       },
     ),
-
   askQuestion: (
     cascadeId: string,
     trajectoryId: string,

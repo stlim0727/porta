@@ -304,7 +304,6 @@ export function useStepsStream(
       }
     };
   }, [initialFetch, connectWs, clearReconnectTimer, bumpGeneration]);
-
   // ── Stall Watchdog ──
   // If wsRunning is true but no WS message has arrived for > 10s,
   // query API to verify if the conversation is still running. If not, auto-unstick UI.
@@ -319,7 +318,7 @@ export function useStepsStream(
         try {
           const conv = await api.getConversation(cascadeId);
           if (!mountedRef.current) return;
-          const status = conv?.summary?.status;
+          const status = conv?.status;
           if (status && status !== "CASCADE_RUN_STATUS_RUNNING") {
             console.log(
               `[useStepsStream] Stall watchdog detected terminal status (${status}). Auto-unsticking UI.`,

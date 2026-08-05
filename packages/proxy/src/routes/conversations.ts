@@ -63,6 +63,7 @@ function compareConversationCandidates(
   return b.modifiedAt - a.modifiedAt || a.id.localeCompare(b.id);
 }
 
+
 // ── Background warm-up for disk-only conversations ──
 
 /** Warm-up cache: cascadeId → timestamp when the warm-up was initiated. */
