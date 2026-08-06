@@ -142,13 +142,22 @@ export function getWorkspaceStatus(
 
   if (!status.branch) {
     try {
-      const branch = execSync("git branch --show-current", {
+      const branch = execSync("git rev-parse --abbrev-ref HEAD", {
         cwd: localPath,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
       }).trim();
-      if (branch) {
+      if (branch && branch !== "HEAD") {
         status.branch = branch;
+      } else {
+        const sha = execSync("git rev-parse --short HEAD", {
+          cwd: localPath,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (sha) {
+          status.branch = sha;
+        }
       }
     } catch {
       // ignore

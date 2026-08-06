@@ -254,7 +254,7 @@ export function SettingsPanel({ settings, health, onUpdate, onBack }: Props) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span className="settings-version-badge">
-                v{health?.proxy?.version ?? "0.13.0"}
+                v{health?.proxy?.version ?? import.meta.env.PORTA_VERSION ?? "0.0.0"}
               </span>
               {health?.proxy?.gitCommit && (() => {
                 const commit = health.proxy.gitCommit;

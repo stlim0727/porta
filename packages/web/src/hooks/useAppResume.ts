@@ -29,7 +29,7 @@ export function useAppResume(
       if (now - lastResumeAtRef.current < dedupeMs) return;
 
       lastResumeAtRef.current = now;
-      onResumeRef.current();
+      onResume();
     };
 
     const onVisibilityChange = () => {
@@ -47,5 +47,5 @@ export function useAppResume(
       window.removeEventListener("pageshow", emitResume);
       window.removeEventListener("focus", emitResume);
     };
-  }, [enabled, dedupeMs]);
+  }, [enabled, dedupeMs, onResume]);
 }
