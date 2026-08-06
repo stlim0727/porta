@@ -16,7 +16,7 @@ jobs:
           PATTERN='^(feat|fix|refactor|docs|test|chore|ci)/[0-9]+/.+$'
 
           # Allow well-known integration branches to bypass
-          if [[ "$BRANCH" =~ ^dependabot/ ]] || [[ "$BRANCH" =~ ^release/ ]] || [[ "$BRANCH" == "develop" ]]; then
+          if [[ "$BRANCH" =~ ^dependabot/ ]] || [[ "$BRANCH" =~ ^release/ ]] || [[ "$BRANCH" =~ ^merge/ ]] || [[ "$BRANCH" == "develop" ]]; then
             echo "✅ Bypass branch: $BRANCH"
             exit 0
           fi
