@@ -67,6 +67,13 @@ const EMPTY_THRESHOLD = 10;
  */
 const MIN_ACTIVE_MS = 5000;
 
+/**
+ * Maximum continuous time (ms) to remain ACTIVE with zero step growth or progress
+ * before forcing a fallback to IDLE. Prevents zombie RUNNING state when Language Server
+ * hangs in RUNNING status without finishing.
+ */
+const MAX_STALLED_ACTIVE_MS = 30000;
+
 /** Terminal cascade run statuses — agent is definitively done. */
 const TERMINAL_STATUSES = new Set([
   "CASCADE_RUN_STATUS_IDLE",
@@ -202,6 +209,7 @@ export function setupWebSocket(
       let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
       let emptyCount = 0;
       let minActiveUntil = 0;
+      let lastProgressTime = 0;
       let peerAlive = true;
       const autoApprovedSteps = new Set<string>();
 
@@ -263,6 +271,7 @@ export function setupWebSocket(
         if (pollState === "active") return; // Already polling
         pollState = "active";
         emptyCount = 0;
+        lastProgressTime = Date.now();
         console.log(`[ws:${shortId}] → ACTIVE`);
         pushStatus(true);
         cancelTimer();
@@ -276,6 +285,7 @@ export function setupWebSocket(
         pollState = "idle";
         emptyCount = 0;
         minActiveUntil = 0;
+        lastProgressTime = Date.now();
         cancelTimer();
         if (wasActive) {
           console.log(`[ws:${shortId}] → IDLE`);
@@ -488,6 +498,7 @@ export function setupWebSocket(
 
           if (hasProgress) {
             emptyCount = 0;
+            lastProgressTime = Date.now();
           } else {
             emptyCount++;
           }
@@ -498,6 +509,19 @@ export function setupWebSocket(
             if (Date.now() < minActiveUntil) {
               emptyCount = 0;
             } else if (await isDefinitelyDone()) {
+              enterIdle();
+              return;
+            } else if (Date.now() - lastProgressTime >= MAX_STALLED_ACTIVE_MS) {
+              console.warn(
+                `[ws:${shortId}] Stalled in RUNNING state for >${MAX_STALLED_ACTIVE_MS}ms with zero progress. Forcing cancellation and IDLE transition.`,
+              );
+              void rpcForConversation(
+                "CancelCascadeInvocation",
+                cascadeId,
+                { cascadeId },
+                undefined,
+                true,
+              ).catch(() => {});
               enterIdle();
               return;
             } else {
