@@ -47,7 +47,17 @@ app.use(
   }),
 );
 
-const PORTA_VERSION = "0.15.0";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+let PORTA_VERSION = "0.0.0";
+try {
+  const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+  PORTA_VERSION = pkg.version ?? "0.0.0";
+} catch {
+  // fallback
+}
 
 function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean; isDirty: boolean } | undefined {
   try {

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
@@ -6,6 +7,13 @@ import { normalizeBasePath } from "./src/basePath.shared";
 import { accessGate } from "./vite-access-gate";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+let appVersion = "0.0.0";
+try {
+  const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  appVersion = pkg.version ?? "0.0.0";
+} catch {
+  // fallback
+}
 
 function toHttpOrigin(host: string, port: string) {
   const normalizedHost =
@@ -51,6 +59,7 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     define: {
       "import.meta.env.PORTA_BASE_PATH": JSON.stringify(basePath),
+      "import.meta.env.PORTA_VERSION": JSON.stringify(appVersion),
     },
     plugins: [
       // Must be first so it gates requests before any other middleware.
