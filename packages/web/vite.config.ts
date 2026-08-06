@@ -6,10 +6,12 @@ import { VitePWA } from "vite-plugin-pwa";
 import { normalizeBasePath } from "./src/basePath.shared";
 import { accessGate } from "./vite-access-gate";
 
+import path from "node:path";
+
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 let appVersion = "0.0.0";
 try {
-  const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
   appVersion = pkg.version ?? "0.0.0";
 } catch {
   // fallback

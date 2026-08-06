@@ -47,17 +47,31 @@ app.use(
   }),
 );
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
-let PORTA_VERSION = "0.0.0";
-try {
-  const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  PORTA_VERSION = pkg.version ?? "0.0.0";
-} catch {
-  // fallback
+function getPortaVersion(): string {
+  let currentDir = fileURLToPath(new URL(".", import.meta.url));
+  for (let i = 0; i < 5; i++) {
+    const candidate = path.join(currentDir, "package.json");
+    if (existsSync(candidate)) {
+      try {
+        const pkg = JSON.parse(readFileSync(candidate, "utf8"));
+        if (pkg.name === "porta" && pkg.version) {
+          return pkg.version;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const parent = path.dirname(currentDir);
+    if (parent === currentDir) break;
+    currentDir = parent;
+  }
+  return "0.0.0";
 }
+
+const PORTA_VERSION = getPortaVersion();
 
 function getGitCommitInfo(): { sha: string; shortSha: string; url: string; isPushed: boolean; isDirty: boolean } | undefined {
   try {
